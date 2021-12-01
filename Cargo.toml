@@ -1,0 +1,30 @@
+[package]
+name = "aoc2021"
+version = "0.1.0"
+authors = ["Ivan Smirnov <rust@ivan.smirnov.ie>"]
+edition = "2021"
+
+[dependencies]
+memchr = "2.4"
+
+[profile.release]
+codegen-units = 1
+lto = "fat"
+panic = "abort"
+
+[dev-dependencies]
+criterion = "0.3"
+
+[lib]
+name = "aoc2021"
+path = "src/lib.rs"
+bench = false
+
+[[bin]]
+name = "run"
+path = "src/run.rs"
+bench = false
+
+[[bench]]
+name = "bench"
+harness = false
