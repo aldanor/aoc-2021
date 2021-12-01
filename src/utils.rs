@@ -26,33 +26,40 @@ impl Integer for i32 {}
 impl Integer for i64 {}
 
 #[inline(always)]
-pub fn parse_int_fast_skip_custom<T: Integer>(
-    s: &mut &[u8], min_digits: usize, max_digits: usize, skip: usize,
+pub fn parse_int_fast_skip_custom<
+    T: Integer,
+    const MIN_DIGITS: usize,
+    const MAX_DIGITS: usize,
+    const SKIP: usize,
+>(
+    s: &mut &[u8],
 ) -> T {
     let mut v = T::from(s.get_digit());
     *s = s.advance(1);
-    for _ in 1..min_digits {
+    for _ in 1..MIN_DIGITS {
         let d = s.get_digit();
         *s = s.advance(1);
         v = v * T::from(10u8) + T::from(d);
     }
-    for _ in min_digits..max_digits {
+    for _ in MIN_DIGITS..MAX_DIGITS {
         let d = s.get_digit();
         if d < 10 {
             *s = s.advance(1);
             v = v * T::from(10u8) + T::from(d);
         } else {
-            *s = s.advance(skip);
+            *s = s.advance(SKIP);
             return v;
         }
     }
-    *s = s.advance(skip);
+    *s = s.advance(SKIP);
     v
 }
 
 #[inline(always)]
-pub fn parse_int_fast<T: Integer>(s: &mut &[u8], min_digits: usize, max_digits: usize) -> T {
-    parse_int_fast_skip_custom(s, min_digits, max_digits, 1)
+pub fn parse_int_fast<T: Integer, const MIN_DIGITS: usize, const MAX_DIGITS: usize>(
+    s: &mut &[u8],
+) -> T {
+    parse_int_fast_skip_custom::<T, MIN_DIGITS, MAX_DIGITS, 1>(s)
 }
 
 pub trait SliceExt<T: Copy> {

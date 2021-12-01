@@ -10,10 +10,10 @@ fn count_increasing<T: Integer, const N: usize>(mut s: &[u8]) -> u16 {
     let mut count = 0;
     let mut buf = [T::default(); N];
     for i in 0..N - 1 {
-        buf[i] = parse_int_fast::<T>(&mut s, 1, 4);
+        buf[i] = parse_int_fast::<T, 1, 4>(&mut s);
     }
     while s.len() > 1 {
-        let num = parse_int_fast::<T>(&mut s, 1, 4);
+        let num = parse_int_fast::<T, 1, 4>(&mut s);
         count += u16::from(num > buf[0]);
         buf[N - 1] = num;
         for i in 1..N {
