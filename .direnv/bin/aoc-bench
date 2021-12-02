@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)"
+PROJ_DIR=$SCRIPT_DIR/../..
+export RUSTFLAGS="-Awarnings"
+cargo run --manifest-path $PROJ_DIR/Cargo.toml --target-dir $PROJ_DIR/target/direnv \
+    --release --bin runner -- --bench "$@"
