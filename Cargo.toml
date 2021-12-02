@@ -18,7 +18,9 @@ panic = "abort"
 [lib]
 name = "aoc2021"
 path = "src/lib.rs"
+doctest = false
 
 [[bin]]
 name = "runner"
 path = "src/runner.rs"
+test = false
