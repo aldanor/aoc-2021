@@ -15,24 +15,14 @@ codegen-units = 1
 lto = "fat"
 panic = "abort"
 
-[dev-dependencies]
-criterion = "0.3"
-
 [lib]
 name = "aoc2021"
 path = "src/lib.rs"
-bench = false
 
 [[bin]]
 name = "run"
 path = "src/run.rs"
-bench = false
 
 [[bin]]
 name = "runner"
 path = "src/runner.rs"
-bench = false
-
-[[bench]]
-name = "bench"
-harness = false
