@@ -17,7 +17,7 @@ macro_rules! bench {
 
 pub fn criterion_benchmark(c: &mut Criterion) {
     bench!(c, day01);
-    // bench!(c, day02);
+    bench!(c, day02);
     // bench!(c, day03);
     // bench!(c, day04);
     // bench!(c, day05);

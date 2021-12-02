@@ -13,7 +13,7 @@ macro_rules! run_day {
 fn main() {
     use aoc2021::*;
     run_day!(day01);
-    // run_day!(day02);
+    run_day!(day02);
     // run_day!(day03);
     // run_day!(day04);
     // run_day!(day05);
