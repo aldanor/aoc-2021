@@ -20,9 +20,5 @@ name = "aoc2021"
 path = "src/lib.rs"
 
 [[bin]]
-name = "run"
-path = "src/run.rs"
-
-[[bin]]
 name = "runner"
 path = "src/runner.rs"
