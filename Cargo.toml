@@ -3,9 +3,12 @@ name = "aoc2021"
 version = "0.1.0"
 authors = ["Ivan Smirnov <rust@ivan.smirnov.ie>"]
 edition = "2021"
+default-run = "runner"
 
 [dependencies]
 memchr = "2.4"
+structopt = "0.3"
+eyre = "0.6"
 
 [profile.release]
 codegen-units = 1
@@ -23,6 +26,11 @@ bench = false
 [[bin]]
 name = "run"
 path = "src/run.rs"
+bench = false
+
+[[bin]]
+name = "runner"
+path = "src/runner.rs"
 bench = false
 
 [[bench]]
