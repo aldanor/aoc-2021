@@ -64,13 +64,15 @@ pub fn part2(mut s: &[u8]) -> u32 {
     const N: usize = 12;
     let mut bits = [0_u16; 1 << (N + 1)];
     while s.len() > 1 {
-        let mut row = &mut bits[..];
+        let mut row = bits.as_mut_ptr();
         let mut value = 0_u16;
         for i in 0..N {
             let bit = (s.get_at(i) == b'1') as u16;
             value = (value << 1) | bit;
-            row[value as usize] += 1;
-            row = &mut row[(1 << (i + 1))..];
+            unsafe {
+                *row.add(value as _) += 1;
+                row = row.add(1 << (i + 1));
+            }
         }
         s = s.advance(13);
     }
