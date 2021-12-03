@@ -63,7 +63,8 @@ pub fn part2(mut s: &[u8]) -> u32 {
 
     const N: usize = 12;
     let mut bits = [0_u16; 1 << (N + 1)];
-    while s.len() > 1 {
+    let n = s.len() / (N + 1);
+    for _ in 0..n {
         let mut row = bits.as_mut_ptr();
         let mut value = 0_u16;
         for i in 0..N {
@@ -74,7 +75,7 @@ pub fn part2(mut s: &[u8]) -> u32 {
                 row = row.add(1 << (i + 1));
             }
         }
-        s = s.advance(13);
+        s = s.advance(N + 1);
     }
 
     /*
