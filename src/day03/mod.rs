@@ -7,24 +7,42 @@ pub fn input() -> &'static [u8] {
 
 #[inline]
 pub fn part1(mut s: &[u8]) -> u32 {
+    use core_simd::{u16x16, u16x32};
     const N: usize = 12;
-    let mut bits = [0_u16; N];
     let mut count = 0_u16;
+    let mut total = u16x32::splat(0);
+    while s.len() >= 32 {
+        let input: [u8; 32] = unsafe { *s.as_ptr().cast() };
+        let mut buf = [0; 32];
+        for i in 0..32 {
+            buf[i] = input[i] as u16;
+        }
+        total += u16x32::from(buf);
+        s = s.advance(26);
+        count += 2;
+    }
+    let mut bits = [0_u16; 16];
+    let total = total.to_array();
+    for i in 0..N {
+        bits[i] += total[i] + total[N + 1 + i];
+    }
     while s.len() > 1 {
         for i in 0..N {
-            bits[i] += (s.get_at(i) == b'1') as u16;
+            bits[i] += s.get_at(i) as u16;
         }
         count += 1;
         s = s.advance(13);
     }
-    let half_count = count >> 1;
-    let (mut gamma, mut epsilon) = (0_u16, 0_u16);
+    let bits = u16x16::from(bits);
+    let threshold = u16x16::splat(((b'0' as u16) * count) + (count >> 1));
+    let most_bits = bits.lanes_ge(threshold).to_array();
+    let least_bits = bits.lanes_lt(threshold).to_array();
+    let (mut most, mut least) = (0_u16, 0_u16);
     for i in 0..N {
-        let most_common = (bits[N - 1 - i] >= half_count) as u16;
-        gamma |= most_common << i;
-        epsilon |= (1 - most_common) << i;
+        most = most << 1 | most_bits[i] as u16;
+        least = least << 1 | least_bits[i] as u16;
     }
-    (gamma as u32) * (epsilon as u32)
+    most as u32 * least as u32
 }
 
 #[inline]
