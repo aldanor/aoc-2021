@@ -47,74 +47,47 @@ pub fn part1(mut s: &[u8]) -> u32 {
 
 #[inline]
 pub fn part2(mut s: &[u8]) -> u32 {
-    /*
-    We will keep track of bit counts in a 'binary pyramid'.
-
-    Here is the representation of rows:
-        [u16; 2]        - # of 0s/1s in highest bit
-        [u16; 4]        - # of 0s/1s in the first two bits
-        [u16; 8]        - # of 0s/1s in the first three bits
-        ...
-        [u16; 1 << N]   - # of 0s/1s in all bits
-
-    Total number of values in the pyramid:
-        1 + 2 + 4 + ... N = (1 << (N + 1)) - 1
-     */
-
     const N: usize = 12;
-    let mut bits = [0_u16; 1 << (N + 1)];
     let n = s.len() / (N + 1);
+    let mut counts = [0_u8; 1 << N];
     for _ in 0..n {
-        let mut row = bits.as_mut_ptr();
-        let mut value = 0_u16;
+        let mut value = 0;
         for i in 0..N {
-            let bit = (s.get_at(i) == b'1') as u16;
-            value = (value << 1) | bit;
-            unsafe {
-                *row.add(value as _) += 1;
-                row = row.add(1 << (i + 1));
-            }
+            let bit = (s.get_at(i) == b'1');
+            value = (value << 1) | (bit as usize);
         }
+        counts[value] += 1;
         s = s.advance(N + 1);
     }
 
-    /*
-    Truth table for 'most':
-        a := num0 != 0      (there exist numbers with 0 in this bit)
-        b := num1 != 0      (there exist numbers with 1 in this bit)
-        c := num1 >= num0   (there are more or equal numbers with 1 than 0 in this bit)
-
-    a b c
-    0 0 0     ? (n/a)
-    0 0 1     ? (n/a)
-    0 1 0     1
-    0 1 1     1
-    1 0 0     0
-    1 0 1     0
-    1 1 0     0
-    1 1 1     1
-
-    We'll set the first two values to 1 to derive the simplest expression:
-        ~a || (b && c)
-
-    Similarly for 'least', we set
-        c := num1 < num0 (???)
-     */
-    let truth_table =
-        |nonzero0: bool, nonzero1: bool, condition: bool| !nonzero0 || (nonzero1 && condition);
-
-    let mut row = &bits[..];
-    let (mut index_most, mut index_least) = (0, 0);
-    for i in 0..N {
-        index_most <<= 1;
-        let (most0, most1) = (row[index_most], row[index_most + 1]);
-        index_most |= truth_table(most0 != 0, most1 != 0, most1 >= most0) as usize;
-        index_least <<= 1;
-        let (least0, least1) = (row[index_least], row[index_least + 1]);
-        index_least |= truth_table(least0 != 0, least1 != 0, least1 < least0) as usize;
-        row = &row[(1 << (i + 1))..];
+    let mut offset_most = 0;
+    let mut offset_least = 0;
+    let mut total_most = n as u16;
+    let mut total_least = n as u16;
+    let mut size = 1 << N;
+    for _ in 0..N {
+        size >>= 1;
+        let (mut most0, mut least0) = (0, 0);
+        for j in 0..size {
+            most0 += counts[offset_most + j] as u16;
+            least0 += counts[offset_least + j] as u16;
+        }
+        let most1 = total_most - most0;
+        let least1 = total_least - least0;
+        total_most = if most0 == 0 || (most1 != 0 && most1 >= most0) {
+            offset_most += size;
+            most1
+        } else {
+            most0
+        };
+        total_least = if least0 == 0 || (least1 != 0 && least1 < least0) {
+            offset_least += size;
+            least1
+        } else {
+            least0
+        };
     }
-    (index_most as u32) * (index_least as u32)
+    offset_most as u32 * offset_least as u32
 }
 
 #[test]
