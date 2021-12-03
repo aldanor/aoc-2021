@@ -7,6 +7,7 @@ default-run = "runner"
 
 [dependencies]
 memchr = "2.4"
+core_simd = { git = "https://github.com/rust-lang/portable-simd.git" }
 structopt = "0.3"
 eyre = "0.6"
 
