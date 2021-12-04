@@ -181,6 +181,7 @@ fn run_bench(day_part: Option<(u8, Option<u8>)>, seconds: f64, warmup: f64) {
     let parts = if let Some(part) = part { vec![part] } else { vec![1, 2] };
 
     print_header(part);
+    let mut tm_total = 0.;
     for &day in &days {
         let mut tms_day = vec![];
         for &part in &parts {
@@ -190,6 +191,7 @@ fn run_bench(day_part: Option<(u8, Option<u8>)>, seconds: f64, warmup: f64) {
                     print!("{:<w$}", format_time(tms_day[0]), w = W_PART);
                 }
             });
+            tm_total += tm;
             tms_day.push(tm);
         }
         print_day(day);
@@ -197,6 +199,11 @@ fn run_bench(day_part: Option<(u8, Option<u8>)>, seconds: f64, warmup: f64) {
             print!("{:<w$}", format_time(tm), w = W_PART);
         }
         println!();
+    }
+
+    if day.is_none() && part.is_none() {
+        println!("{:-<w$}", "", w = W_DAY + W_PART * 2);
+        println!("total time = {}", format_time(tm_total));
     }
 }
 
