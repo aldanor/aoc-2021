@@ -6,19 +6,105 @@ const N: usize = 5;
 
 type Number = u8;
 type Score = u32;
-type Mask = u128;
 
 #[inline]
 pub fn input() -> &'static [u8] {
     include_bytes!("input.txt")
 }
 
+fn parse_numbers(s: &mut &[u8]) -> Vec<Number> {
+    let mut numbers = Vec::with_capacity(1 << 7);
+    while s.get_at(0) != b'\n' {
+        numbers.push(parse_int_fast::<_, 1, 2>(s));
+    }
+    *s = s.advance(2);
+    numbers
+}
+
+type Board = [[Number; N]; N];
+
+fn parse_board(s: &mut &[u8]) -> Board {
+    let mut board = Board::default();
+    for i in 0..N {
+        for j in 0..N {
+            if s.get_at(0) == b' ' {
+                *s = s.advance(1);
+            }
+            let num = parse_int_fast::<Number, 1, 2>(s);
+            board[i][j] = num;
+        }
+    }
+    *s = s.advance(1);
+    board
+}
+
+fn time_to_win(board: &Board, draw_times: &[usize]) -> usize {
+    let (mut max_cols, mut max_rows) = ([0; N], [0; N]);
+    for i in 0..N {
+        for j in 0..N {
+            let num = board[i][j];
+            let draw_time = draw_times[num as usize];
+            max_cols[j] = max_cols[j].max(draw_time);
+            max_rows[i] = max_rows[i].max(draw_time);
+        }
+    }
+    max_cols.into_iter().min().unwrap_or(0).min(max_rows.into_iter().min().unwrap_or(0))
+}
+
+#[inline]
+fn solve(mut s: &[u8], ttw_is_better: impl Fn(usize, usize) -> bool, ttw_init: usize) -> Score {
+    // Credits for the algorithm idea: @orlp
+
+    let numbers = parse_numbers(&mut s);
+    let mut draw_times = [0; 1 << 7];
+    for (t, &num) in numbers.iter().enumerate() {
+        draw_times[num as usize] = t;
+    }
+    let mut boards = vec![];
+    let (mut ttw_best, mut idx_best) = (ttw_init, usize::MAX);
+    while s.len() > 1 {
+        let board = parse_board(&mut s);
+        let ttw = time_to_win(&board, &draw_times);
+        if ttw_is_better(ttw, ttw_best) {
+            ttw_best = ttw;
+            idx_best = boards.len();
+        }
+        boards.push(board);
+    }
+
+    let board = boards[idx_best];
+    let mut sum_unmasked = 0;
+    for i in 0..N {
+        for j in 0..N {
+            let num = board[i][j];
+            if draw_times[num as usize] > ttw_best {
+                sum_unmasked += num as Score;
+            }
+        }
+    }
+    sum_unmasked * numbers[ttw_best] as Score
+}
+
+#[inline]
+pub fn part1(s: &[u8]) -> Score {
+    solve(s, |ttw, ttw_best| ttw < ttw_best, usize::MAX)
+}
+
+#[inline]
+pub fn part2(s: &[u8]) -> Score {
+    solve(s, |ttw, ttw_best| ttw > ttw_best, 0)
+}
+
+// Below is the original mask-based solution (12us / 24us).
+
+type Mask = u128;
+
 #[derive(Clone, Copy, Default)]
-pub struct Board {
+pub struct BoardMasks {
     masks: [Mask; N * 2], // N horizontal, N vertical
 }
 
-impl Board {
+impl BoardMasks {
     pub fn parse(s: &mut &[u8]) -> Self {
         let mut board = Self::default();
         for i in 0..N {
@@ -52,7 +138,7 @@ impl Board {
     }
 }
 
-impl Debug for Board {
+impl Debug for BoardMasks {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for i in 0..N {
             let row_mask = self.masks[i];
@@ -69,27 +155,18 @@ impl Debug for Board {
     }
 }
 
-fn parse_numbers(s: &mut &[u8]) -> Vec<Number> {
-    let mut numbers = Vec::with_capacity(1 << 7);
-    while s.get_at(0) != b'\n' {
-        numbers.push(parse_int_fast::<_, 1, 2>(s));
-    }
-    *s = s.advance(2);
-    numbers
-}
-
-fn parse_input(mut s: &[u8]) -> (Vec<Number>, Vec<Board>) {
+fn parse_numbers_and_masks(mut s: &[u8]) -> (Vec<Number>, Vec<BoardMasks>) {
     let numbers = parse_numbers(&mut s);
     let mut boards = Vec::with_capacity(1 << 7);
     while s.len() > 1 {
-        boards.push(Board::parse(&mut s));
+        boards.push(BoardMasks::parse(&mut s));
     }
     (numbers, boards)
 }
 
 #[inline]
-pub fn part1(s: &[u8]) -> Score {
-    let (numbers, mut boards) = parse_input(s);
+pub fn part1_u128(s: &[u8]) -> Score {
+    let (numbers, mut boards) = parse_numbers_and_masks(s);
     for (k, &num) in numbers.iter().enumerate() {
         let m = !(1_u128 << (num + 1));
         for board in &mut boards {
@@ -105,8 +182,8 @@ pub fn part1(s: &[u8]) -> Score {
 }
 
 #[inline]
-pub fn part2(s: &[u8]) -> Score {
-    let (numbers, mut boards) = parse_input(s);
+pub fn part2_u128(s: &[u8]) -> Score {
+    let (numbers, mut boards) = parse_numbers_and_masks(s);
     let n_boards = boards.len();
     let (mut n_winners, mut is_win) = (0, vec![false; n_boards]);
     for (k, &num) in numbers.iter().enumerate() {
