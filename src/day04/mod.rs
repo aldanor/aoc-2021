@@ -12,6 +12,7 @@ pub fn input() -> &'static [u8] {
     include_bytes!("input.txt")
 }
 
+#[inline]
 fn parse_numbers(s: &mut &[u8]) -> Vec<Number> {
     let mut numbers = Vec::with_capacity(1 << 7);
     while s.get_at(0) != b'\n' {
@@ -23,6 +24,7 @@ fn parse_numbers(s: &mut &[u8]) -> Vec<Number> {
 
 type Board = [[Number; N]; N];
 
+#[inline]
 fn parse_board(s: &mut &[u8]) -> Board {
     let mut board = Board::default();
     for i in 0..N {
@@ -38,12 +40,14 @@ fn parse_board(s: &mut &[u8]) -> Board {
     board
 }
 
+#[inline]
 fn time_to_win(board: &Board, draw_times: &[usize]) -> usize {
     let (mut max_cols, mut max_rows) = ([0; N], [0; N]);
     for i in 0..N {
         for j in 0..N {
-            let num = board[i][j];
-            let draw_time = draw_times[num as usize];
+            let draw_time = unsafe {
+                *draw_times.get_unchecked(*board.get_unchecked(i).get_unchecked(j) as usize)
+            };
             max_cols[j] = max_cols[j].max(draw_time);
             max_rows[i] = max_rows[i].max(draw_time);
         }
@@ -56,11 +60,11 @@ fn solve(mut s: &[u8], ttw_is_better: impl Fn(usize, usize) -> bool, ttw_init: u
     // Credits for the algorithm idea: @orlp
 
     let numbers = parse_numbers(&mut s);
-    let mut draw_times = [0; 1 << 7];
+    let mut draw_times = [0; 1 << 8];
     for (t, &num) in numbers.iter().enumerate() {
         draw_times[num as usize] = t;
     }
-    let mut boards = vec![];
+    let mut boards = Vec::with_capacity(100);
     let (mut ttw_best, mut idx_best) = (ttw_init, usize::MAX);
     while s.len() > 1 {
         let board = parse_board(&mut s);
@@ -77,12 +81,12 @@ fn solve(mut s: &[u8], ttw_is_better: impl Fn(usize, usize) -> bool, ttw_init: u
     for i in 0..N {
         for j in 0..N {
             let num = board[i][j];
-            if draw_times[num as usize] > ttw_best {
+            if draw_times.get_at(num as usize) > ttw_best {
                 sum_unmasked += num as Score;
             }
         }
     }
-    sum_unmasked * numbers[ttw_best] as Score
+    sum_unmasked * numbers.get_at(ttw_best) as Score
 }
 
 #[inline]
