@@ -53,7 +53,7 @@ pub fn part2(mut s: &[u8]) -> u32 {
     for _ in 0..n {
         let mut value = 0;
         for i in 0..N {
-            let bit = (s.get_at(i) == b'1');
+            let bit = s.get_at(i) == b'1';
             value = (value << 1) | (bit as usize);
         }
         counts[value] += 1;
