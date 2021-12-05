@@ -68,7 +68,6 @@ pub trait SliceExt<T: Copy> {
     fn get_mut_at(&mut self, i: usize) -> &mut T;
     fn set_at(&mut self, i: usize, v: T);
     fn advance(&self, n: usize) -> &Self;
-    fn add_at(&mut self, i: usize, v: T);
 
     #[inline]
     fn get_first(&self) -> T {
@@ -81,7 +80,7 @@ pub trait SliceExt<T: Copy> {
     }
 }
 
-impl<T: Copy + Add<Output = T> + AddAssign> SliceExt<T> for [T] {
+impl<T: Copy> SliceExt<T> for [T] {
     #[inline]
     fn get_len(&self) -> usize {
         self.len()
@@ -106,7 +105,13 @@ impl<T: Copy + Add<Output = T> + AddAssign> SliceExt<T> for [T] {
     fn advance(&self, n: usize) -> &Self {
         unsafe { slice::from_raw_parts(self.as_ptr().add(n), self.len().saturating_sub(n)) }
     }
+}
 
+pub trait SliceExtNumeric<T: Copy> {
+    fn add_at(&mut self, i: usize, v: T);
+}
+
+impl<T: Copy + Add<Output = T> + AddAssign> SliceExtNumeric<T> for [T] {
     #[inline]
     fn add_at(&mut self, i: usize, v: T) {
         unsafe { *self.get_unchecked_mut(i) += v };
