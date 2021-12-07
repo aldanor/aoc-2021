@@ -56,17 +56,6 @@ fn mean_floor(x: &[T]) -> T {
 }
 
 #[inline]
-fn cost2(x: &[T], m: T) -> C {
-    x.iter()
-        .map(|&x| {
-            let d = (x - m) as C;
-            d * d + d.abs()
-        })
-        .sum::<C>()
-        / 2
-}
-
-#[inline]
 pub fn part2(mut s: &[u8]) -> C {
     /*
     Cost function:
@@ -92,7 +81,17 @@ pub fn part2(mut s: &[u8]) -> C {
      */
     let mut x = parse_input(s);
     let m = mean_floor(&x);
-    cost2(&x, m).min(cost2(&x, m + 1))
+
+    // a bit more ugly, but lets us iterate over the array once only
+    let (mut c1, mut c2) = (0, 0);
+    for &x in &x {
+        let d1 = (x - m) as C;
+        c1 += d1 * d1 + d1.abs();
+        let d2 = d1 - 1;
+        c2 += d2 * d2 + d2.abs();
+    }
+
+    c1.min(c2) >> 1
 }
 
 #[test]
@@ -102,5 +101,5 @@ fn test_day02_part1() {
 
 #[test]
 fn test_day02_part2() {
-    assert_eq!(part2(input()), 0);
+    assert_eq!(part2(input()), 95851339);
 }
