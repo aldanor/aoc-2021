@@ -65,6 +65,7 @@ pub fn parse_int_fast<T: Integer, const MIN_DIGITS: usize, const MAX_DIGITS: usi
 pub trait SliceExt<T: Copy> {
     fn get_len(&self) -> usize;
     fn get_at(&self, i: usize) -> T;
+    fn get_ref_at(&self, i: usize) -> &T;
     fn get_mut_at(&mut self, i: usize) -> &mut T;
     fn set_at(&mut self, i: usize, v: T);
     fn advance(&self, n: usize) -> &Self;
@@ -89,6 +90,11 @@ impl<T: Copy> SliceExt<T> for [T] {
     #[inline]
     fn get_at(&self, i: usize) -> T {
         unsafe { *self.get_unchecked(i) }
+    }
+
+    #[inline]
+    fn get_ref_at(&self, i: usize) -> &T {
+        unsafe { &(*self.get_unchecked(i)) }
     }
 
     #[inline]
