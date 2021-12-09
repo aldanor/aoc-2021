@@ -94,6 +94,47 @@ impl UnionFind {
     }
 }
 
+#[allow(unused)]
+pub fn part2_dfs(mut s: &[u8]) -> usize {
+    // Simple DFS implementation - works but is 3x slower than union-find
+
+    fn dfs(grid: &mut [u8], i: usize, j: usize, coord: usize) -> usize {
+        if grid.get_at(coord) == b'9' {
+            0
+        } else {
+            grid.set_at(coord, b'9');
+            let mut size = 1;
+            if j != 0 {
+                size += dfs(grid, i, j - 1, coord - 1);
+            }
+            if j != N - 1 {
+                size += dfs(grid, i, j + 1, coord + 1);
+            }
+            if i != 0 {
+                size += dfs(grid, i - 1, j, coord - N - 1);
+            }
+            if i != N - 1 {
+                size += dfs(grid, i + 1, j, coord + N + 1);
+            }
+            size
+        }
+    }
+
+    let mut grid = s.to_vec();
+    let mut sizes = vec![];
+    for i in 0..N {
+        let row = i * (N + 1);
+        for j in 0..N {
+            let size = dfs(&mut grid, i, j, row + j);
+            if size != 0 {
+                sizes.push(size);
+            }
+        }
+    }
+    sizes.sort_unstable();
+    sizes[sizes.len() - 3..].iter().product::<usize>()
+}
+
 #[inline]
 pub fn part2(mut s: &[u8]) -> usize {
     // This is basically a 4-connected CCL problem for binary images.
