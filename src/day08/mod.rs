@@ -147,6 +147,51 @@ pub fn part2(mut s: &[u8]) -> usize {
     sum
 }
 
+pub fn part2_faster(mut s: &[u8]) -> usize {
+    // implementation of @orlp's solution (probably the fastest possible here)
+    let mut decoder = [0_u8; 256];
+    decoder[42] = 0;
+    decoder[17] = 1;
+    decoder[34] = 2;
+    decoder[39] = 3;
+    decoder[30] = 4;
+    decoder[37] = 5;
+    decoder[41] = 6;
+    decoder[25] = 7;
+    decoder[49] = 8;
+    decoder[45] = 9;
+
+    let mut sum = 0;
+    while s.len() > 1 {
+        let mut input_counts = [0_u8; 256];
+        for i in 0..58 {
+            input_counts.add_at(s.get_at(i) as _, 1);
+        }
+        s = s.advance(61);
+        let mut num = 0_usize;
+        let mut output_counts = 0_u8;
+        loop {
+            match s.get_first() {
+                ch @ b'a'..=b'g' => {
+                    output_counts += input_counts.get_at(ch as _);
+                }
+                ch => {
+                    let digit = decoder.get_at(output_counts as _) as usize;
+                    num = num * 10 + digit;
+                    output_counts = 0;
+                    if ch == b'\n' {
+                        s = s.advance(1);
+                        sum += num;
+                        break;
+                    }
+                }
+            }
+            s = s.advance(1);
+        }
+    }
+    sum
+}
+
 #[test]
 fn test_day02_part1() {
     assert_eq!(part1(input()), 301);
