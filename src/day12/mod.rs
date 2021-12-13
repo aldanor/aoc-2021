@@ -16,9 +16,22 @@ const END: usize = 1;
 const START_NAME: [u8; 2] = [0, 0];
 const END_NAME: [u8; 2] = [0xff, 0xff];
 
+type Mask = u8;
+type VisitedCache = ArrayVec<[[u32; 256]; 2], MAX_NODES>;
+
+#[inline]
+fn cache_get_mut(cache: &mut VisitedCache, i: usize, twice: bool, mask: Mask) -> &mut u32 {
+    unsafe {
+        cache
+            .get_unchecked_mut(i)
+            .get_unchecked_mut(twice as usize)
+            .get_unchecked_mut(mask as usize)
+    }
+}
+
 #[derive(Clone)]
 struct Node {
-    mask: u8,
+    mask: Mask,
     edges: ArrayVec<usize, MAX_EDGES>,
     name: [u8; 2],
 }
@@ -41,20 +54,18 @@ impl Debug for Node {
 }
 
 impl Node {
-    pub fn new(name: [u8; 2], mask: u8) -> Self {
+    pub fn new(name: [u8; 2], mask: Mask) -> Self {
         Self { mask, edges: ArrayVec::new(), name }
     }
 }
 
-type VisitedCounts = ArrayVec<[usize; 256], MAX_NODES>;
-
 #[derive(Debug, Clone)]
-struct G {
+struct Graph {
     nodes: ArrayVec<Node, MAX_NODES>,
     n_small: usize,
 }
 
-impl G {
+impl Graph {
     pub fn new() -> Self {
         let mut nodes = ArrayVec::new();
         nodes.push(Node::new(START_NAME, 0));
@@ -108,46 +119,78 @@ impl G {
         g
     }
 
-    fn count_paths(&self, i: usize, mut mask: u8) -> usize {
-        if i == END {
-            return 1;
+    pub fn count_paths(&self, allow_twice: bool) -> usize {
+        let mut cache = VisitedCache::new();
+        for _ in 0..self.nodes.len() {
+            cache.push([[u32::MAX; 256]; 2]);
         }
-        let node = &self.nodes[i];
-        if node.mask & mask != 0 {
-            return 0;
-        }
-        mask |= node.mask;
-        node.edges.iter().map(|&j| self.count_paths(j, mask)).sum()
+        self.count_paths_impl(START, false, 0, allow_twice, &mut cache) as _
     }
 
-    fn count_paths_2(&self, i: usize, mut mask: u8, mut twice: u8) -> usize {
+    fn count_paths_impl(
+        &self, i: usize, twice: bool, mask: Mask, allow_twice: bool, cache: &mut VisitedCache,
+    ) -> u32 {
+        let cached = *cache_get_mut(cache, i, twice, mask);
+        if cached != u32::MAX {
+            cached
+        } else if i == END {
+            1
+        } else {
+            let node = unsafe { self.nodes.get_unchecked(i) };
+            let (new_mask, new_twice) = if node.mask & mask != 0 {
+                if allow_twice && !twice {
+                    (mask, true)
+                } else {
+                    return 0;
+                }
+            } else {
+                (mask | node.mask, twice)
+            };
+            let count = node
+                .edges
+                .iter()
+                .map(|&j| self.count_paths_impl(j, new_twice, new_mask, allow_twice, cache))
+                .sum();
+            *cache_get_mut(cache, i, twice, mask) = count;
+            count
+        }
+    }
+
+    #[allow(unused)]
+    pub fn count_paths_naive(&self, allow_twice: bool) -> usize {
+        self.count_paths_naive_impl(START, 0, false, allow_twice)
+    }
+
+    fn count_paths_naive_impl(
+        &self, i: usize, mut mask: Mask, mut twice: bool, allow_twice: bool,
+    ) -> usize {
         if i == END {
             return 1;
         }
         let node = &self.nodes[i];
         if node.mask & mask != 0 {
-            if twice == 0 {
-                twice = node.mask;
+            if allow_twice && !twice {
+                twice = true;
             } else {
                 return 0;
             }
         } else {
             mask |= node.mask;
         }
-        node.edges.iter().map(|&j| self.count_paths_2(j, mask, twice)).sum()
+        node.edges.iter().map(|&j| self.count_paths_naive_impl(j, mask, twice, allow_twice)).sum()
     }
 }
 
 #[inline]
 pub fn part1(mut s: &[u8]) -> usize {
-    let mut g = G::parse(s);
-    g.count_paths(START, 0)
+    let mut g = Graph::parse(s);
+    g.count_paths(false)
 }
 
 #[inline]
 pub fn part2(mut s: &[u8]) -> usize {
-    let mut g = G::parse(s);
-    g.count_paths_2(START, 0, 0)
+    let mut g = Graph::parse(s);
+    g.count_paths(true)
 }
 
 #[test]
