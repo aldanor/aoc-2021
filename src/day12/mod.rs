@@ -105,6 +105,38 @@ impl Graph {
         }
     }
 
+    pub fn trim(mut self) -> Self {
+        // remove nodes that will be unused anyway (that have a single edge leading to small)
+        let mut remove = ArrayVec::<usize, MAX_NODES>::new();
+        for (i, node) in self.nodes.iter().enumerate().rev() {
+            if node.edges.len() == 1 && self.nodes[node.edges[0]].mask != 0 {
+                remove.push(i);
+            }
+        }
+        for i in remove {
+            if self.nodes[i].mask != 0 {
+                self.n_small -= 1;
+            }
+            for node in &mut self.nodes {
+                node.edges = node
+                    .edges
+                    .iter()
+                    .filter_map(|&e| {
+                        if e == i {
+                            None
+                        } else if e < i {
+                            Some(e)
+                        } else {
+                            Some(e - 1)
+                        }
+                    })
+                    .collect();
+            }
+            self.nodes.remove(i);
+        }
+        self
+    }
+
     pub fn parse(mut s: &[u8]) -> Self {
         let mut g = Self::new();
         while s.len() > 1 {
@@ -183,14 +215,12 @@ impl Graph {
 
 #[inline]
 pub fn part1(mut s: &[u8]) -> usize {
-    let mut g = Graph::parse(s);
-    g.count_paths(false)
+    Graph::parse(s).trim().count_paths(false)
 }
 
 #[inline]
 pub fn part2(mut s: &[u8]) -> usize {
-    let mut g = Graph::parse(s);
-    g.count_paths(true)
+    Graph::parse(s).trim().count_paths(true)
 }
 
 #[test]
