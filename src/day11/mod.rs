@@ -1,53 +1,69 @@
 use std::iter;
+use std::mem;
 
 use crate::utils::*;
 
 const N: usize = 10;
-type Grid = [[i8; N]; N];
+const W: usize = N + 2;
 
 #[inline]
 pub fn input() -> &'static [u8] {
     include_bytes!("input.txt")
 }
 
+type Cell = i16;
+type Grid = [[Cell; W]; W];
+
 fn parse_grid(mut s: &[u8]) -> Grid {
-    let mut grid = [[0; N]; N];
-    for i in 0..N {
-        for j in 0..N {
-            grid[i][j] = s.get_digit_at(j) as _;
+    let mut grid = [[Cell::MIN; W]; W];
+    for i in 1..=N {
+        for j in 1..=N {
+            grid[i][j] = s.get_digit_at(j - 1) as Cell;
         }
         s = s.advance(N + 1);
     }
     grid
 }
 
-fn evolve(mut grid: Grid) -> impl Iterator<Item = usize> {
-    fn dfs(grid: &mut Grid, i: usize, j: usize) {
-        grid[i][j] += 1;
-        if grid[i][j] >= 10 {
-            grid[i][j] = i8::MIN;
-            for y in i.saturating_sub(1)..=(i + 1).min(N - 1) {
-                for x in j.saturating_sub(1)..=(j + 1).min(N - 1) {
-                    if (y, x) != (i, j) {
-                        dfs(grid, y, x);
-                    }
-                }
+fn evolve_dfs(mut grid: Grid) -> impl Iterator<Item = usize> {
+    type FlatGrid = [Cell; W * W];
+    let mut grid: FlatGrid = unsafe { mem::transmute(grid) };
+
+    type Stack = Vec<usize>;
+    let mut stack = Stack::with_capacity(W * W);
+    let mut next = stack.clone();
+
+    #[inline]
+    fn bump_and_check(stack: &mut Stack, grid: &mut FlatGrid, i: usize, reset: bool) {
+        let cell = unsafe { grid.get_unchecked_mut(i) };
+        if *cell < 9 {
+            if reset {
+                *cell = (*cell).max(0) + 1;
+            } else {
+                *cell += 1;
             }
+        } else {
+            *cell = Cell::MIN;
+            stack.push(i);
         }
     }
 
     iter::from_fn(move || {
-        for i in 0..N {
-            for j in 0..N {
-                dfs(&mut grid, i, j);
+        let mut n_flashes = 0;
+        for i in 1..=N {
+            for j in 1..=N {
+                bump_and_check(&mut stack, &mut grid, i * W + j, true);
             }
         }
-        let mut n_flashes = 0;
-        for i in 0..N {
-            for j in 0..N {
-                if grid[i][j] < 0 {
-                    n_flashes += 1;
-                    grid[i][j] = 0;
+        while !stack.is_empty() {
+            n_flashes += stack.len();
+            mem::swap(&mut stack, &mut next);
+            unsafe {
+                stack.set_len(0);
+            }
+            for &i in &next {
+                for j in [i - W - 1, i - W, i - W + 1, i - 1, i + 1, i + W - 1, i + W, i + W + 1] {
+                    bump_and_check(&mut stack, &mut grid, j, false);
                 }
             }
         }
@@ -57,12 +73,12 @@ fn evolve(mut grid: Grid) -> impl Iterator<Item = usize> {
 
 #[inline]
 pub fn part1(mut s: &[u8]) -> usize {
-    evolve(parse_grid(s)).take(100).sum()
+    evolve_dfs(parse_grid(s)).take(100).sum()
 }
 
 #[inline]
 pub fn part2(mut s: &[u8]) -> usize {
-    1 + evolve(parse_grid(s)).take_while(|n| *n != N * N).count()
+    1 + evolve_dfs(parse_grid(s)).take_while(|n| *n != N * N).count()
 }
 
 #[test]
