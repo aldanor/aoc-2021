@@ -20,41 +20,6 @@ const fn map() -> [u8; 256] {
     map
 }
 
-#[derive(Debug)]
-struct UnsafeStack<'a> {
-    stack: &'a mut [u8],
-    ptr: *mut u8,
-}
-
-impl<'a> UnsafeStack<'a> {
-    pub fn new(stack: &'a mut [u8]) -> Self {
-        let ptr = stack.as_mut_ptr();
-        Self { stack, ptr }
-    }
-
-    pub fn len(&self) -> usize {
-        unsafe { self.ptr.offset_from(self.stack.as_ptr()) as usize }
-    }
-
-    pub fn into_slice(self) -> &'a [u8] {
-        &self.stack[..self.len()]
-    }
-
-    pub fn push(&mut self, v: u8) {
-        unsafe {
-            (*self.ptr) = v;
-            self.ptr = self.ptr.add(1);
-        }
-    }
-
-    pub fn pop(&mut self) -> u8 {
-        unsafe {
-            self.ptr = self.ptr.sub(1);
-            *self.ptr
-        }
-    }
-}
-
 #[inline]
 fn build_stack<'a>(mut s: &[u8], stack: &'a mut [u8]) -> (u8, &'a [u8]) {
     const MAP: [u8; 256] = map();

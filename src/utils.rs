@@ -163,3 +163,42 @@ impl ByteSliceExt for [u8] {
         u16::from_ne_bytes(a)
     }
 }
+
+#[derive(Debug)]
+pub struct UnsafeStack<'a, T> {
+    stack: &'a mut [T],
+    ptr: *mut T,
+}
+
+impl<'a, T: Copy> UnsafeStack<'a, T> {
+    pub fn new(stack: &'a mut [T]) -> Self {
+        let ptr = stack.as_mut_ptr();
+        Self { stack, ptr }
+    }
+
+    #[inline]
+    pub fn len(&self) -> usize {
+        unsafe { self.ptr.offset_from(self.stack.as_ptr()) as usize }
+    }
+
+    #[inline]
+    pub fn into_slice(self) -> &'a [T] {
+        &self.stack[..self.len()]
+    }
+
+    #[inline]
+    pub fn push(&mut self, v: T) {
+        unsafe {
+            (*self.ptr) = v;
+            self.ptr = self.ptr.add(1);
+        }
+    }
+
+    #[inline]
+    pub fn pop(&mut self) -> T {
+        unsafe {
+            self.ptr = self.ptr.sub(1);
+            *self.ptr
+        }
+    }
+}
