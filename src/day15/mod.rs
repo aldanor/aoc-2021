@@ -4,10 +4,6 @@ use std::iter;
 use std::mem;
 use std::slice;
 
-use ringbuffer::{
-    ConstGenericRingBuffer as RingBuf, RingBuffer, RingBufferExt, RingBufferRead, RingBufferWrite,
-};
-
 use crate::utils::*;
 
 type Weight = u8;
@@ -21,37 +17,46 @@ pub fn input() -> &'static [u8] {
 const CAP: usize = 1 << 8;
 const K: usize = 16; // because cell weights are <= 9
 
+use arrayvec::ArrayVec;
+
 struct Queue {
-    store: [RingBuf<usize, CAP>; K],
+    store: [ArrayVec<usize, CAP>; K],
     min_score: Score,
     start: usize,
 }
 
 impl Queue {
     pub fn new() -> Self {
-        let init = RingBuf::new();
-        let store = iter::repeat(init).take(K).collect::<Vec<_>>().try_into().unwrap();
+        let store =
+            iter::repeat_with(ArrayVec::new).take(K).collect::<Vec<_>>().try_into().unwrap();
         let (min_score, start) = (0, 0);
         Self { store, min_score, start }
     }
 
     #[inline]
-    pub fn push(&mut self, dist: Score, index: usize) {
-        let i = (self.start + (dist - self.min_score) as usize) % K;
-        self.store[i].push(index);
-    }
-
-    #[inline]
-    pub fn pop(&mut self) -> Option<usize> {
-        for i in self.start..(self.start + K) {
-            let i = i % K;
-            if !self.store[i].is_empty() {
-                return self.store[i].dequeue();
+    pub fn iter_min(&mut self, mut func: impl FnMut(&mut Queue, usize)) -> bool {
+        for _ in 0..K {
+            if !self.store[self.start].is_empty() {
+                // ok, this is the dodgy part - BUT:
+                // min node weight is >= 1, so there won't be any contention since
+                // mutated nodes won't overlap with the top row being iterated over
+                let queue_ref = unsafe { &mut *(self as *mut _) };
+                for &i in &self.store[self.start] {
+                    func(queue_ref, i);
+                }
+                self.store[self.start].clear();
+                return true;
             }
             self.start = (self.start + 1) % K;
             self.min_score += 1;
         }
-        None
+        false
+    }
+
+    #[inline]
+    pub fn push(&mut self, dist: Score, index: usize) {
+        let i = (self.start + (dist - self.min_score) as usize) % K;
+        unsafe { self.store[i].push_unchecked(index) };
     }
 }
 
@@ -113,10 +118,7 @@ impl<const N: usize, const W: usize, const R: usize> Grid<N, W, R> {
         let mut queue = Queue::new();
         queue.push(0, Self::START);
 
-        while let Some(i) = queue.pop() {
-            if i == Self::END {
-                break;
-            }
+        while queue.iter_min(|queue, i| {
             let cell = grid[i].clone();
             for j in [i - W, i - 1, i + 1, i + W] {
                 let neighbor = &mut grid[j];
@@ -132,7 +134,7 @@ impl<const N: usize, const W: usize, const R: usize> Grid<N, W, R> {
                     }
                 }
             }
-        }
+        }) {}
         grid[Self::END].dist
     }
 }
@@ -144,7 +146,7 @@ pub fn part1(mut s: &[u8]) -> Score {
 
 #[inline]
 pub fn part2(mut s: &[u8]) -> Score {
-    Grid::<100, 600, 5>::parse(s).dijkstra()
+    Grid::<100, 512, 5>::parse(s).dijkstra()
 }
 
 #[test]

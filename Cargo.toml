@@ -11,7 +11,6 @@ memchr = "2.4"
 core_simd = { git = "https://github.com/rust-lang/portable-simd.git" }
 structopt = "0.3"
 eyre = "0.6"
-ringbuffer = "0.8"
 
 [profile.release]
 #codegen-units = 1
