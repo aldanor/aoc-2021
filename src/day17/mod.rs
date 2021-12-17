@@ -1,5 +1,7 @@
 use std::ops::Range;
 
+use num_integer::div_ceil;
+
 use crate::utils::*;
 
 type T = i32;
@@ -25,39 +27,28 @@ fn parse(mut s: &[u8]) -> ((T, T), (T, T)) {
     ((x0, x1), (-y0, -y1))
 }
 
-fn dio(x: T) -> f64 {
-    // xv * (xv + 1) / 2 = x => xv = (-1 + sqrt(1 + 8x)) / 2
-    (-1. + (1. + 8. * x as f64).sqrt()) / 2.
-}
-
 #[inline]
 pub fn part1(mut s: &[u8]) -> T {
     let ((_xmin, _xmax), (ymin, _ymax)) = parse(s);
     (ymin * (ymin + 1)) / 2
 }
 
-struct VelocitySet {
-    xmax: T,
-    ymin: T,
-    bits: [[u64; 4]; 256],
+#[inline]
+fn dio(x: T) -> f64 {
+    // xv * (xv + 1) / 2 = x => xv = (-1 + sqrt(1 + 8x)) / 2
+    (-1. + (1. + 8. * x as f64).sqrt()) / 2.
 }
 
-impl VelocitySet {
-    pub fn new(xmax: T, ymin: T) -> Self {
-        Self { xmax, ymin, bits: [[0; 4]; 256] }
+#[inline]
+fn v_range(min: T, max: T, n: T, lb: T) -> Range<T> {
+    let vmin = div_ceil(min, n).max(lb);
+    let mut vmax = vmin;
+    let mut bound = vmax * n;
+    while bound <= max {
+        vmax += 1;
+        bound += n;
     }
-
-    #[inline]
-    pub fn insert(&mut self, (vx, vy): (T, T)) {
-        let ix = (self.xmax - vx) as usize;
-        let iy = (vy - self.ymin) as usize;
-        self.bits[ix as usize][iy >> 6] |= 1 << (iy & 0x3f);
-    }
-
-    pub fn len(&self) -> usize {
-        self.bits.iter().map(|row| row.iter().map(|b| b.count_ones()).sum::<u32>()).sum::<u32>()
-            as _
-    }
+    vmin..vmax
 }
 
 #[inline]
@@ -67,58 +58,76 @@ pub fn part2(mut s: &[u8]) -> usize {
     // range of vx where eventually vx = 0 and we hit the box on x coordinate
     let (vx_stop_min, vx_stop_max) = (dio(xmin).ceil() as T, dio(xmax).floor() as T);
 
-    let mut set = VelocitySet::new(xmax, ymin);
+    let mut n_paths: T = 0;
 
-    fn v_range(min: T, max: T, n: T, acc: T, lb: T) -> Range<T> {
-        use num_integer::div_floor;
-        let vmin = div_floor(min + acc + n - 1, n).max(lb);
-        let vmax = div_floor(max + acc, n);
-        vmin.min(vmax + 1)..(vmax + 1)
-        // if vmin > vmax {
-        //     0..0
-        // } else {
-        //     vmin..(vmax + 1)
-        // }
-    }
-
-    let n_max = 200;
-
-    // handle the stop range
-    for vx_init in vx_stop_min..=vx_stop_max {
-        let mut vx = vx_init;
-        let mut acc = 0;
-        let mut x = 0;
-        for n in 1..=n_max {
-            if vx != 0 {
-                x += vx;
-                vx -= 1;
+    // first, handle the 'stop' range of vx where the trajectory eventually hits vx = 0
+    for vx in vx_stop_min..=vx_stop_max {
+        // fast-forward to vx=0 point first
+        let mut n = vx;
+        // now backtrack within the box
+        let mut x = (vx * (vx + 1)) / 2;
+        // println!("vx={}, n={}, x={}", vx, n, x);
+        let mut vx_t = 0;
+        loop {
+            if x - vx_t - 1 < xmin {
+                break;
             }
-            if x < xmin {
+            vx_t += 1;
+            x -= vx_t;
+            n -= 1;
+        }
+        let mut acc = (n * (n - 1)) / 2;
+        let mut vymax_prev = T::MIN;
+        // for each n forward, search for all valid vy
+        'outer: for n in n.. {
+            let vyr = v_range(ymin + acc, ymax + acc, n, T::MIN);
+            if vyr.is_empty() {
                 acc += n;
                 continue;
             }
-            let vy_range = v_range(ymin, ymax, n, acc, T::MIN);
-            for vy in vy_range {
-                set.insert((vx_init, vy));
+            let (vymin, vymax) = (vyr.start, vyr.end);
+            let dvy = vymax - vymin;
+            n_paths += dvy;
+            if vymin < vymax_prev {
+                n_paths -= vymax_prev - vymin;
             }
+            if vymax > -ymin - 1 {
+                break 'outer;
+            }
+            vymax_prev = vymax;
             acc += n;
         }
     }
 
-    // handle the continuous range
+    // handle the 'continuous' range
     let mut acc = 0;
-    for n in 1..=n_max {
-        let vx_range = v_range(xmin, xmax, n, acc, (vx_stop_max + 1).max(n));
-        let vy_range = v_range(ymin, ymax, n, acc, T::MIN);
-        for vx in vx_range {
-            for vy in vy_range.clone() {
-                set.insert((vx, vy));
-            }
+    let (mut vxmin_prev, mut vymax_prev) = (T::MAX, T::MIN);
+    for n in 1.. {
+        // search for valid vx
+        let vxr = v_range(xmin + acc, xmax + acc, n, (vx_stop_max + 1).max(n));
+        if vxr.is_empty() {
+            break;
         }
+        let (vxmin, vxmax) = (vxr.start, vxr.end);
+        let dvx = vxmax - vxmin;
+        // search for valid vy
+        let vyr = v_range(ymin + acc, ymax + acc, n, T::MIN);
+        if vyr.is_empty() {
+            continue;
+        }
+        let (vymin, vymax) = (vyr.start, vyr.end);
+        let dvy = vymax - vymin;
+        // count the number of trajectories and account for overlaps
+        n_paths += dvx * dvy;
+        if vxmax > vxmin_prev && vymin < vymax_prev {
+            n_paths -= (vxmax - vxmin_prev) * (vymax_prev - vymin);
+        }
+        vxmin_prev = vxmin;
+        vymax_prev = vymax;
         acc += n;
     }
 
-    set.len()
+    n_paths as _
 }
 
 #[test]
