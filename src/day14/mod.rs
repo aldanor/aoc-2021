@@ -1,4 +1,6 @@
-use std::ops::{AddAssign, Sub, SubAssign};
+use std::fmt::Debug;
+use std::iter::Sum;
+use std::ops::{Add, AddAssign, Sub, SubAssign};
 
 use crate::utils::*;
 
@@ -15,8 +17,7 @@ fn parse(mut s: &[u8]) -> (Vec<u8>, Rules) {
     let k = s.memchr(b'\n');
     let word = &s[..k];
     s = s.advance(k + 2);
-    let (mut fwd_map, mut rev_map, mut n_chars) = ([0; N], [0xff; 256], 0);
-    let mut rules = [[0_u8; N]; N];
+    let (mut rev_map, mut n_chars, mut rules) = ([0xff; 256], 0, [[0; N]; N]);
     for _ in 0..N * N {
         assert!(s.len() >= 1);
         let mut line = [0; 3];
@@ -24,7 +25,6 @@ fn parse(mut s: &[u8]) -> (Vec<u8>, Rules) {
             let c = s.get_at(j);
             if rev_map[c as usize] == 0xff {
                 rev_map[c as usize] = n_chars as u8;
-                fwd_map[n_chars] = c;
                 n_chars += 1;
             }
             line[i] = rev_map[c as usize];
@@ -39,14 +39,20 @@ fn parse(mut s: &[u8]) -> (Vec<u8>, Rules) {
 
 fn solve<T>(word: &[u8], rules: &Rules, n_iter: usize) -> T
 where
-    T: Default + Copy + From<u8> + AddAssign + SubAssign + Sub<Output = T> + Ord,
+    T: Sum
+        + Default
+        + Copy
+        + From<u8>
+        + AddAssign
+        + SubAssign
+        + Sub<Output = T>
+        + Ord
+        + Debug
+        + Add<Output = T>,
 {
     let mut matrix = [[T::default(); N]; N];
-    let mut counts = [T::default(); N];
-    counts[word[0] as usize] = T::from(1_u8);
     for i in 1..word.len() {
         matrix[word[i - 1] as usize][word[i] as usize] += T::from(1_u8);
-        counts[word[i] as usize] += T::from(1_u8);
     }
 
     let mut next = matrix;
@@ -55,7 +61,6 @@ where
             for right in 0..N {
                 let c = rules[left][right] as usize;
                 let n = matrix[left][right];
-                counts[c] += n;
                 next[left][right] -= n;
                 next[left][c] += n;
                 next[c][right] += n;
@@ -64,8 +69,9 @@ where
         matrix = next;
     }
 
+    let mut counts = matrix.map(|row| row.into_iter().sum::<T>());
     counts.sort_unstable();
-    counts[N - 1] - counts[0]
+    counts[N - 1] - counts[0] + T::from(1_u8)
 }
 
 #[inline]
