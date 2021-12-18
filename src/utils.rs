@@ -79,6 +79,16 @@ pub trait SliceExt<T: Copy> {
     fn get_last(&self) -> T {
         self.get_at(self.get_len() - 1)
     }
+
+    #[inline]
+    fn get_last_mut(&mut self) -> &mut T {
+        self.get_mut_at(self.get_len() - 1)
+    }
+
+    #[inline]
+    fn set_last(&mut self, value: T) {
+        self.set_at(self.get_len(), value)
+    }
 }
 
 impl<T: Copy> SliceExt<T> for [T] {
