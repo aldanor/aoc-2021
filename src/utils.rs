@@ -1,5 +1,5 @@
 use core::hint::unreachable_unchecked;
-use core::ops::{Add, AddAssign, Mul};
+use core::ops::{Add, AddAssign, Mul, Neg};
 use core::slice;
 
 use memchr::{memchr, memchr2};
@@ -60,6 +60,38 @@ pub fn parse_int_fast<T: Integer, const MIN_DIGITS: usize, const MAX_DIGITS: usi
     s: &mut &[u8],
 ) -> T {
     parse_int_fast_skip_custom::<T, MIN_DIGITS, MAX_DIGITS, 1>(s)
+}
+
+#[inline(always)]
+pub fn parse_int_fast_signed_skip_custom<
+    T: Integer + Neg<Output = T>,
+    const MIN_DIGITS: usize,
+    const MAX_DIGITS: usize,
+    const SKIP: usize,
+>(
+    s: &mut &[u8],
+) -> T {
+    let neg = s.get_first() == b'-';
+    if neg {
+        *s = s.advance(1);
+    }
+    let num = parse_int_fast_skip_custom::<T, MIN_DIGITS, MAX_DIGITS, SKIP>(s);
+    if neg {
+        -num
+    } else {
+        num
+    }
+}
+
+#[inline(always)]
+pub fn parse_int_fast_signed<
+    T: Integer + Neg<Output = T>,
+    const MIN_DIGITS: usize,
+    const MAX_DIGITS: usize,
+>(
+    s: &mut &[u8],
+) -> T {
+    parse_int_fast_signed_skip_custom::<T, MIN_DIGITS, MAX_DIGITS, 1>(s)
 }
 
 pub trait SliceExt<T: Copy> {
