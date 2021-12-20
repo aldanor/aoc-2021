@@ -13,9 +13,6 @@ type D = i32; // distance type
 
 const B: usize = 32; // max num detected beacons per scanner
 const S: usize = 64; // max num scanners
-const N1: usize = 9; // probe point 1
-const N2: usize = 18; // probe point 2
-const K: usize = 10; // num bits in max absolute coordinate
 
 const POS: usize = 0;
 const NEG: usize = 1;
@@ -69,12 +66,14 @@ fn distances_sort_unique_intersect(d0: &ArrayDist, d1: &ArrayDist) -> ([ArrayDis
     let mut ix1 = ArrayVec::new();
     let (n0, n1) = (d0.len(), d1.len());
     let (mut i0, mut i1) = (0, 0);
-    while i0 != n0 && i1 != n1 {
+    let mut early_stop = n0 + n1 - 66 * 2; // stop early if we can't collect 66 intersections
+    while i0 != n0 && i1 != n1 && i0 + i1 <= early_stop {
         let (v0, v1) = (d0.get_at(i0), d1.get_at(i1));
         if v0.d == v1.d {
             unsafe {
                 ix0.push_unchecked(v0);
                 ix1.push_unchecked(v1);
+                early_stop += 2;
             }
         }
         i0 += (v0.d <= v1.d) as usize;
