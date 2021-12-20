@@ -64,6 +64,27 @@ impl From<(D, I, I)> for Distance {
 }
 
 #[inline]
+fn distances_sort_unique_intersect(d0: &ArrayDist, d1: &ArrayDist) -> ([ArrayDist; 2], usize) {
+    let mut ix0 = ArrayVec::new();
+    let mut ix1 = ArrayVec::new();
+    let (n0, n1) = (d0.len(), d1.len());
+    let (mut i0, mut i1) = (0, 0);
+    while i0 != n0 && i1 != n1 {
+        let (v0, v1) = (d0.get_at(i0), d1.get_at(i1));
+        if v0.d == v1.d {
+            unsafe {
+                ix0.push_unchecked(v0);
+                ix1.push_unchecked(v1);
+            }
+        }
+        i0 += (v0.d <= v1.d) as usize;
+        i1 += (v1.d <= v0.d) as usize;
+    }
+    let n_unique = ix0.len();
+    ([ix0, ix1], n_unique)
+}
+
+#[inline]
 fn arrayvec_sorted_intersect_by_key<T: Copy, K: Ord + Copy, F: Fn(&T) -> K, const CAP: usize>(
     d0: &ArrayVec<T, CAP>, d1: &ArrayVec<T, CAP>, key: F,
 ) -> ([ArrayVec<T, CAP>; 2], usize) {
@@ -256,7 +277,13 @@ impl Scanner {
         let n = [self.len(), other.len()];
 
         // find initial distance overlaps
-        let (ix, n_unique) = arrayvec_sorted_intersect_by_key(d0, d1, |x| x.d);
+        let (ix, n_unique) =
+            if d0.len() == (n[0] * (n[0] - 1)) / 2 && d1.len() == (n[1] * (n[1] - 1)) / 2 {
+                distances_sort_unique_intersect(d0, d1)
+            } else {
+                arrayvec_sorted_intersect_by_key(d0, d1, |x| x.d)
+            };
+
         if ix[0].len().min(ix[1].len()) < 66 {
             return None; // C(12, 2) = 66, minimum number of edges required
         }
