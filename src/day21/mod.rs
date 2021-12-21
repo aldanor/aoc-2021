@@ -63,78 +63,42 @@ pub fn part1(mut s: &[u8]) -> usize {
     }
 }
 
-fn zero_out<T: ?Sized>(x: &mut T) {
-    use std::mem;
-    use std::slice;
-    unsafe { slice::from_raw_parts_mut(x as *mut T as *mut u8, mem::size_of_val(x)).fill(0) }
-}
-
-type Dp = [[[[u64; 21]; 21]; 10]; 10];
-
-fn dp_step<const PLAYER: usize>(dp: &Dp, next: &mut Dp, step: usize) -> u64 {
-    const ROLLS: [(usize, u64); 7] = [(3, 1), (4, 3), (5, 6), (6, 7), (7, 6), (8, 3), (9, 1)];
-
-    let mut wins = 0;
-    zero_out(next);
-
-    let min_score = if step <= 1 { step } else { 2 * step - 1 };
-
-    for (roll, count) in ROLLS {
-        let mut wins_roll = 0;
-        for pos_this in 0..10 {
-            let new_pos = (pos_this + roll) % 10;
-            let score_delta = 1 + new_pos;
-            let min_win = 21 - score_delta;
-            for pos_other in 0..10 {
-                for score_this in min_score..min_win {
-                    let new_score = score_this + score_delta;
-                    for score_other in min_score..21 {
-                        if PLAYER == 0 {
-                            next[new_pos][pos_other][new_score][score_other] +=
-                                dp[pos_this][pos_other][score_this][score_other] * count;
-                        } else {
-                            next[pos_other][new_pos][score_other][new_score] +=
-                                dp[pos_other][pos_this][score_other][score_this] * count;
-                        }
-                    }
-                }
-                for score_this in min_win..21 {
-                    for score_other in min_score..21 {
-                        wins_roll += if PLAYER == 0 {
-                            dp[pos_this][pos_other][score_this][score_other]
-                        } else {
-                            dp[pos_other][pos_this][score_other][score_this]
-                        };
-                    }
-                }
-            }
-        }
-        wins += count * wins_roll;
-    }
-    wins
-}
-
 #[inline]
 pub fn part2(mut s: &[u8]) -> u64 {
     const ROLLS: [(usize, u64); 7] = [(3, 1), (4, 3), (5, 6), (6, 7), (7, 6), (8, 3), (9, 1)];
-
     let p = parse(s);
-
-    let mut buf1 = [[[[0_u64; 21]; 21]; 10]; 10];
-    let mut buf2 = [[[[0_u64; 21]; 21]; 10]; 10];
-    let mut dp = &mut buf1;
-    dp[p[0] as usize - 1][p[1] as usize - 1][0][0] = 1;
-    let mut next = &mut buf2;
-
-    let mut wins = [0; 2];
-    for step in 0.. {
-        let prev_wins = wins;
-        wins[0] += dp_step::<0>(&dp, &mut next, step);
-        std::mem::swap(&mut dp, &mut next);
-        wins[1] += dp_step::<1>(&dp, &mut next, step);
-        std::mem::swap(&mut dp, &mut next);
-        if step > 3 && wins == prev_wins {
-            break;
+    // positions/players are rotating, but scores only increase (at least by 1), so we can sweep
+    // diagonally from (0, 0) all the way to (20, 20)
+    let mut dp = [[[[[0_u64; 2]; 10]; 10]; 21]; 21]; // [score0][score1][pos0][pos1][player]
+    dp[0][0][p[0] as usize - 1][p[1] as usize - 1][0] = 1;
+    let mut wins = [0_u64; 2];
+    for sum in 0..21 * 2 {
+        for score0 in 0..sum + 1 {
+            let score1 = sum - score0;
+            if score0 < 21 && score1 < 21 {
+                for (roll, count) in ROLLS {
+                    for pos0 in 0..10 {
+                        for pos1 in 0..10 {
+                            let new_pos0 = (pos0 + roll) % 10;
+                            let new_score0 = score0 + new_pos0 + 1;
+                            if new_score0 >= 21 {
+                                wins[0] += dp[score0][score1][pos0][pos1][0] * count;
+                            } else {
+                                dp[new_score0][score1][new_pos0][pos1][1] +=
+                                    dp[score0][score1][pos0][pos1][0] * count;
+                            }
+                            let new_pos1 = (pos1 + roll) % 10;
+                            let new_score1 = score1 + new_pos1 + 1;
+                            if new_score1 >= 21 {
+                                wins[1] += dp[score0][score1][pos0][pos1][1] * count;
+                            } else {
+                                dp[score0][new_score1][pos0][new_pos1][0] +=
+                                    dp[score0][score1][pos0][pos1][1] * count;
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
     wins[0].max(wins[1])
