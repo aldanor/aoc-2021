@@ -4,7 +4,7 @@ use std::time::{Duration, Instant};
 use eyre::{ensure, Result};
 use structopt::StructOpt;
 
-const N_DAYS: usize = 21;
+const N_DAYS: usize = 22;
 
 const W_DAY: usize = 10;
 const W_PART: usize = 10;
@@ -81,7 +81,7 @@ fn run_one_raw(day: u8, part: u8, times: usize) -> (Duration, String) {
     if_day!(19, day19);
     if_day!(20, day20);
     if_day!(21, day21);
-    // if_day!(22, day22);
+    if_day!(22, day22);
     // if_day!(23, day23);
     // if_day!(24, day24);
     // if_day!(25, day25);
