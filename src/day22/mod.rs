@@ -1,163 +1,196 @@
-mod graph;
-
 use std::iter;
 use std::mem;
-use std::ops::{Add, Neg, Sub};
+use std::ops::Neg;
 
 use arrayvec::ArrayVec;
 
 use crate::utils::*;
 
 const N: usize = 512;
-const X: usize = 0;
-const Y: usize = 1;
-const Z: usize = 2;
 
-type Array<T> = ArrayVec<T, N>;
 type Range<R> = [R; 2];
-type Cube<R> = [Range<R>; 3];
+type Cube<T, const D: usize> = [Range<T>; D];
 
 #[inline]
 pub fn input() -> &'static [u8] {
     include_bytes!("input.txt")
 }
 
-fn parse<T: Integer + Neg<Output = T>>(mut s: &[u8], full: bool) -> (Array<Cube<T>>, Array<bool>) {
-    fn parse_bounds<T: Integer + Neg<Output = T>, const D: usize>(s: &mut &[u8]) -> Cube<T> {
-        let xmin = parse_int_fast_signed::<T, 1, D>(s);
-        *s = s.advance(1);
-        let xmax = parse_int_fast_signed::<T, 1, D>(s) + T::from(1);
-        *s = s.advance(2);
-        let ymin = parse_int_fast_signed::<T, 1, D>(s);
-        *s = s.advance(1);
-        let ymax = parse_int_fast_signed::<T, 1, D>(s) + T::from(1);
-        *s = s.advance(2);
-        let zmin = parse_int_fast_signed::<T, 1, D>(s);
-        *s = s.advance(1);
-        let zmax = parse_int_fast_signed::<T, 1, D>(s) + T::from(1);
-        [[xmin, xmax], [ymin, ymax], [zmin, zmax]]
-    }
+fn parse_cube<T: Integer + Neg<Output = T>>(s: &mut &[u8]) -> Cube<T, 3> {
+    let xmin = parse_int_fast_signed::<T, 1, 6>(s);
+    *s = s.advance(1);
+    let xmax = parse_int_fast_signed::<T, 1, 6>(s) + T::from(1);
+    *s = s.advance(2);
+    let ymin = parse_int_fast_signed::<T, 1, 6>(s);
+    *s = s.advance(1);
+    let ymax = parse_int_fast_signed::<T, 1, 6>(s) + T::from(1);
+    *s = s.advance(2);
+    let zmin = parse_int_fast_signed::<T, 1, 6>(s);
+    *s = s.advance(1);
+    let zmax = parse_int_fast_signed::<T, 1, 6>(s) + T::from(1);
+    [[xmin, xmax], [ymin, ymax], [zmin, zmax]]
+}
 
-    let mut cubes = Array::new();
-    let mut state = Array::new();
+fn parse_input<T>(mut s: &[u8], full: bool) -> (ArrayVec<Cube<T, 3>, N>, ArrayVec<bool, N>)
+where
+    T: Integer + Neg<Output = T>,
+{
+    let mut cubes = ArrayVec::new();
+    let mut state = ArrayVec::new();
     while s.len() > 1 {
         let is_on = s.get_at(1) == b'n';
         s = s.advance(5 + (!is_on) as usize);
-        let cube = parse_bounds::<T, 6>(&mut s);
         if s.get_at(2).is_ascii_digit() && s.get_at(3).is_ascii_digit() && !full {
             break;
         };
+        let cube = parse_cube::<T>(&mut s);
         cubes.push(cube);
         state.push(is_on);
     }
     (cubes, state)
 }
 
-const AXES: [usize; 3] = [0, 1, 2];
+#[inline]
+fn volume<T: Integer, const D: usize>(x: &Cube<T, D>) -> T {
+    (0..D).map(|i| x[i][1] - x[i][0]).product::<T>()
+}
 
 #[inline]
-pub fn part1(mut s: &[u8]) -> usize {
-    type T = i16;
-    let (cubes, state) = parse::<T>(s, false);
-    const W: usize = 100;
-    const SIZE: usize = W * W * W;
-    const STRIDES: [usize; 3] = [W * W, W, 1];
-    let mut grid = Vec::with_capacity(SIZE);
-    unsafe { grid.set_len(SIZE) };
-    grid.fill(false);
-    for (i, &cube) in cubes.iter().enumerate() {
-        let [[xmin, xmax], [ymin, ymax], [zmin, zmax]] =
-            cube.map(|range| range.map(|coord| (coord + 50) as usize));
-        for x in xmin..=xmax {
-            let offset = x * STRIDES[X];
-            for y in ymin..=ymax {
-                let offset = offset + y * STRIDES[Y];
-                grid[offset + zmin..=offset + zmax].fill(state[i]);
+fn overlaps<T: Integer, const D: usize>(a: &Cube<T, D>, b: &Cube<T, D>) -> bool {
+    (0..D).all(|i| a[i][0].max(b[i][0]) < a[i][1].min(b[i][1]))
+}
+
+#[inline]
+fn intersect_unchecked<T: Integer, const D: usize>(a: &Cube<T, D>, b: &Cube<T, D>) -> Cube<T, D> {
+    let mut out = [[T::default(); 2]; D];
+    for i in 0..D {
+        out[i] = [a[i][0].max(b[i][0]), a[i][1].min(b[i][1])];
+    }
+    out
+}
+
+fn find_total_volume<T, const D: usize, const N: usize, const L: usize>(
+    regions: &[Cube<T, D>], is_on: &[bool],
+) -> T
+where
+    T: Integer + Neg<Output = T>,
+{
+    // idea in using cliques taken from: 10.1109/ICDM.2019.00160
+
+    let n = regions.len();
+
+    let mut queue = Vec::<(Cube<T, D>, ArrayVec<usize, L>, bool)>::with_capacity(n * L);
+    let mut neighbors = [[false; N]; N]; // for bigger problems, can use btreeset/hashset
+
+    // build overlap matrix (the upper-right triangular part of it) and initialize the queue
+    for i in 0..n - 1 {
+        let a = &regions[i];
+        let mut neighbors_list = ArrayVec::new();
+        for j in i + 1..n {
+            let b = &regions[j];
+            if overlaps(a, b) {
+                neighbors[i][j] = true;
+                neighbors_list.push(j);
             }
         }
-    }
-    grid.iter().map(|&v| v as usize).sum()
-}
-
-use self::graph::{Endpoint, Region};
-use petgraph::graph::{NodeIndex, UnGraph};
-use std::collections::{BTreeSet, VecDeque};
-
-#[derive(Debug, Clone, Copy)]
-struct CliqueRegion<T, const D: usize> {
-    region: Region<T, D>, // intersection of all regions in the clique
-    first_is_on: bool,    // whether the first region in the clique is 'on'
-    even: bool,
-}
-
-impl<T: Endpoint, const D: usize> CliqueRegion<T, D> {
-    pub fn new(region: Region<T, D>, is_on: bool) -> Self {
-        Self { region, first_is_on: is_on, even: true }
-    }
-
-    pub fn extend(&self, region: &Region<T, D>) -> Self {
-        Self {
-            region: self.region.intersect_unchecked(region),
-            first_is_on: self.first_is_on,
-            even: !self.even,
+        if is_on[i] {
+            // this ^ is where the algorithm differs from the classic clique
+            // enumeration algorithm; because we don't push cliques that start
+            // with an 'off' node onto the queue, they will never be processed,
+            // which essentially extends inclusion-exclusion principle to
+            // support set subtraction and not just the union when it comes
+            // to computing the total set cardinality.
+            queue.push((regions[i], neighbors_list, true));
         }
     }
-}
+    if is_on[n - 1] {
+        queue.push((regions[n - 1], ArrayVec::new(), true));
+    }
 
-pub fn find_total_volume<T, E, const D: usize>(g: &UnGraph<Region<T, D>, E>, is_on: &[bool]) -> T
-where
-    T: Endpoint + Sub<Output = T> + Add<Output = T> + Neg<Output = T> + iter::Product,
-{
-    // clique enumeration itself is adapted from networkx.Graph.enumerate_all_cliques()
+    let mut total_volume = T::default();
+    for (region, common_neighbors, is_even) in queue.drain(..) {
+        total_volume += enumerate_cliques_recursive::<T, D, N, L>(
+            &region,
+            &common_neighbors,
+            &neighbors,
+            &regions,
+            is_even,
+        );
+    }
+    total_volume
 
-    // for each node `i`, a set of neighbors `j` with `j` > `i`
-    let neighbors: Vec<BTreeSet<usize>> = g
-        .node_indices()
-        .map(|i| g.neighbors(i).filter(|&j| j > i).map(|i| i.index()).collect())
-        .collect();
-
-    let mut queue: VecDeque<(CliqueRegion<T, D>, Vec<usize>)> = g
-        .node_indices()
-        .map(NodeIndex::index)
-        .zip(&neighbors)
-        .map(|(u, neighbors)| {
-            (
-                CliqueRegion::new(g.raw_nodes()[u].weight, is_on[u]),
-                neighbors.iter().copied().collect(),
-            )
-        })
-        .collect();
-
-    let mut volume = T::default();
-
-    while let Some((base, common_neighbors)) = queue.pop_front() {
+    /*
+    // this is a modified/sequential version of the networkx.clique.find_clique() algorithm
+    while let Some((region, common_neighbors, is_even)) = queue.pop() {
         for (i, &u) in common_neighbors.iter().enumerate() {
-            let mut new_base = base.extend(&g.raw_nodes()[u].weight);
-            // we alter the inclusion/exclusion principle a bit because we also have
-            // non-symmetric set differences; only modify the total volume if the
-            // first element in the clique has the 'on' state
-            let new_common_neighbors = common_neighbors[i + 1..]
-                .iter()
-                .copied()
-                .filter(|&j| neighbors[u].contains(&j))
-                .collect();
-            queue.push_back((new_base, new_common_neighbors));
+            let region = intersect_unchecked(&region, &regions[u]);
+            let is_even = !is_even;
+            let common_neighbors =
+                common_neighbors[i + 1..].iter().copied().filter(|&j| neighbors[u][j]).collect();
+            queue.push((region, common_neighbors, is_even));
         }
-        if base.first_is_on {
-            // if the first element is 'on', it's the normal inclusion/exclusion principle
-            let v = base.region.volume().into();
-            volume = volume + if base.even { v } else { -v };
-        }
+        // we know that the first element is always 'on' because we have filtered it out
+        // at the queue creation stage, so the normal inclusion/exclusion principle applies
+        let v = volume(&region);
+        total_volume += if is_even { v } else { -v };
     }
-    volume
+    total_volume
+     */
+}
+
+fn enumerate_cliques_recursive<T, const D: usize, const N: usize, const L: usize>(
+    region: &Cube<T, D>, common_neighbors: &[usize], neighbors: &[[bool; N]; N],
+    regions: &[Cube<T, D>], is_even: bool,
+) -> T
+where
+    T: Integer + Neg<Output = T>,
+{
+    // this is a modified/recursive version of the networkx.clique.find_clique() algorithm
+    let mut total_volume = volume(&region);
+    // we know that the first element is always 'on' because we have filtered it out
+    // at the queue creation stage, so the normal inclusion/exclusion principle applies
+    if !is_even {
+        total_volume = -total_volume;
+    }
+    if let Some(last) = common_neighbors.last().copied() {
+        let mut cn = ArrayVec::<usize, L>::new();
+        let n = common_neighbors.len();
+        for i in 0..n - 1 {
+            let u = common_neighbors[i];
+            cn.clear();
+            for j in i + 1..n {
+                let v = common_neighbors[j];
+                if neighbors[u][v] {
+                    cn.push(v);
+                }
+            }
+            total_volume += enumerate_cliques_recursive::<T, D, N, L>(
+                &intersect_unchecked(region, &regions[u]),
+                &cn,
+                neighbors,
+                regions,
+                !is_even,
+            );
+        }
+        let mut v_last = volume(&intersect_unchecked(region, &regions[last]));
+        if is_even {
+            v_last = -v_last;
+        }
+        total_volume += v_last;
+    }
+    total_volume
+}
+
+#[inline]
+pub fn part1(mut s: &[u8]) -> i64 {
+    let (cubes, state) = parse_input(s, false);
+    return find_total_volume::<_, 3, 32, 16>(&cubes, &state);
 }
 
 #[inline]
 pub fn part2(mut s: &[u8]) -> i64 {
-    use graph::*;
-    let (cubes, state) = parse::<i64>(s, true);
-    let g = IntersectionGraph::from_regions_bruteforce(&cubes);
-    find_total_volume(&g, &state)
+    let (cubes, state) = parse_input(s, true);
+    return find_total_volume::<_, 3, 512, 32>(&cubes, &state);
 }
 
 #[test]
