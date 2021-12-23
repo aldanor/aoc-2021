@@ -1,6 +1,8 @@
 use core::hint::unreachable_unchecked;
-use core::ops::{Add, AddAssign, Mul, Neg};
+use core::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 use core::slice;
+
+use std::iter;
 
 use memchr::{memchr, memchr2};
 
@@ -8,12 +10,18 @@ pub trait Integer:
     Copy
     + From<u8>
     + Add<Output = Self>
+    + AddAssign
+    + Sub<Output = Self>
+    + SubAssign
     + Mul<Output = Self>
+    + MulAssign
     + Default
     + PartialEq
     + Eq
     + Ord
     + PartialOrd
+    + iter::Sum
+    + iter::Product
 {
 }
 
