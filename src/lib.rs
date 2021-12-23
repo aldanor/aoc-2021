@@ -1,5 +1,6 @@
 #![feature(portable_simd)]
 #![feature(array_windows)]
+#![feature(map_first_last)]
 
 pub mod day01;
 pub mod day02;

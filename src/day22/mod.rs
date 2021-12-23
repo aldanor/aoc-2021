@@ -1,4 +1,8 @@
-use std::ops::Neg;
+mod graph;
+
+use std::iter;
+use std::mem;
+use std::ops::{Add, Neg, Sub};
 
 use arrayvec::ArrayVec;
 
@@ -22,15 +26,15 @@ fn parse<T: Integer + Neg<Output = T>>(mut s: &[u8], full: bool) -> (Array<Cube<
     fn parse_bounds<T: Integer + Neg<Output = T>, const D: usize>(s: &mut &[u8]) -> Cube<T> {
         let xmin = parse_int_fast_signed::<T, 1, D>(s);
         *s = s.advance(1);
-        let xmax = parse_int_fast_signed::<T, 1, D>(s);
+        let xmax = parse_int_fast_signed::<T, 1, D>(s) + T::from(1);
         *s = s.advance(2);
         let ymin = parse_int_fast_signed::<T, 1, D>(s);
         *s = s.advance(1);
-        let ymax = parse_int_fast_signed::<T, 1, D>(s);
+        let ymax = parse_int_fast_signed::<T, 1, D>(s) + T::from(1);
         *s = s.advance(2);
         let zmin = parse_int_fast_signed::<T, 1, D>(s);
         *s = s.advance(1);
-        let zmax = parse_int_fast_signed::<T, 1, D>(s);
+        let zmax = parse_int_fast_signed::<T, 1, D>(s) + T::from(1);
         [[xmin, xmax], [ymin, ymax], [zmin, zmax]]
     }
 
@@ -39,13 +43,9 @@ fn parse<T: Integer + Neg<Output = T>>(mut s: &[u8], full: bool) -> (Array<Cube<
     while s.len() > 1 {
         let is_on = s.get_at(1) == b'n';
         s = s.advance(5 + (!is_on) as usize);
-        let cube = if s.get_at(2).is_ascii_digit() && s.get_at(3).is_ascii_digit() {
-            if !full {
-                break;
-            }
-            parse_bounds::<T, 5>(&mut s)
-        } else {
-            parse_bounds::<T, 2>(&mut s)
+        let cube = parse_bounds::<T, 6>(&mut s);
+        if s.get_at(2).is_ascii_digit() && s.get_at(3).is_ascii_digit() && !full {
+            break;
         };
         cubes.push(cube);
         state.push(is_on);
@@ -79,131 +79,85 @@ pub fn part1(mut s: &[u8]) -> usize {
     grid.iter().map(|&v| v as usize).sum()
 }
 
-// #[inline]
-// pub fn _part1(mut s: &[u8]) -> usize {
-//     let s = include_bytes!("input_small.txt").as_ref();
-//     type T = i16;
-//     let (cubes, state) = parse::<T>(s, false);
-//
-//     const NIL: usize = !0_usize;
-//     let mut coord_to_idx = [[NIL; 100]; 3];
-//     let mut idx_to_coord = AXES.map(|_| Array::<T>::new());
-//
-//     for cube in &cubes {
-//         for axis in AXES {
-//             for i in 0..2 {
-//                 let coord = cube[axis][i] + 50;
-//                 if coord_to_idx[axis][coord as usize] == NIL {
-//                     coord_to_idx[axis][coord as usize] = idx_to_coord[axis].len();
-//                     idx_to_coord[axis].push(coord);
-//                 }
-//             }
-//         }
-//     }
-//     for axis in AXES {
-//         idx_to_coord[axis].sort_unstable();
-//         for (i, &coord) in idx_to_coord[axis].iter().enumerate() {
-//             coord_to_idx[axis][coord as usize] = i;
-//         }
-//     }
-//     let mut dense_cubes = Array::new();
-//     for &cube in &cubes {
-//         dense_cubes.push(
-//             AXES.map(|axis| cube[axis].map(|coord| coord_to_idx[axis][(coord + 50) as usize])),
-//         );
-//     }
-//     let dims = AXES.map(|axis| idx_to_coord[axis].len());
-//     let size = dims.into_iter().product::<usize>();
-//     let strides = [dims[Y] * dims[Z], dims[Z], 1];
-//     let [dx, dy, dz] = strides;
-//
-//     println!();
-//     for dense_cube in &dense_cubes {
-//         println!("{:?}", dense_cube);
-//     }
-//
-//     let mut grid = Vec::<bool>::with_capacity(size);
-//     unsafe { grid.set_len(size) };
-//     grid.fill(false);
-//
-//     for (i, &[[xmin, xmax], [ymin, ymax], [zmin, zmax]]) in dense_cubes.iter().enumerate() {
-//         for x in xmin..=xmax {
-//             let offset = x * dx;
-//             for y in ymin..=ymax {
-//                 let offset = offset + y * dy;
-//                 grid[offset + zmin..=offset + zmax].fill(state[i]);
-//             }
-//         }
-//     }
-//
-//     let offsets = [
-//         0 * dx + 0 * dy + 0 * dz,
-//         0 * dx + 0 * dy + 1 * dz,
-//         0 * dx + 1 * dy + 0 * dz,
-//         0 * dx + 1 * dy + 1 * dz,
-//         1 * dx + 0 * dy + 0 * dz,
-//         1 * dx + 0 * dy + 1 * dz,
-//         1 * dx + 1 * dy + 0 * dz,
-//         1 * dx + 1 * dy + 1 * dz,
-//     ];
-//     let dist = AXES.map(|axis| {
-//         let mut dist = Array::new();
-//         for [a, b] in idx_to_coord[axis].array_windows::<2>() {
-//             dist.push((b - a) as usize);
-//         }
-//         dist
-//     });
-//     let mut non_empty = Vec::with_capacity(size);
-//     unsafe { non_empty.set_len(size) };
-//     non_empty.fill(false);
-//     let mut total = 0;
-//     let mut n = 0;
-//     for i_x in 0..dims[X] - 1 {
-//         let x_side = 1 + dist[X].get_at(i_x);
-//         let offset = i_x * dx;
-//         for i_y in 0..dims[Y] - 1 {
-//             let offset = offset + i_y * dy;
-//             let y_side = 1 + dist[Y].get_at(i_y);
-//             'outer: for i_z in 0..dims[Z] - 1 {
-//                 // TODO: prev/this x4
-//                 let offset = offset + i_z * dz;
-//                 let grid = &grid[offset..];
-//                 for &d in &offsets {
-//                     if !grid[d] {
-//                         continue 'outer;
-//                     }
-//                 }
-//                 let z_side = 1 + dist[Z].get_at(i_z);
-//                 let j = offset + dx + dy + dz;
-//                 let x_prev = non_empty[j - dx];
-//                 let y_prev = non_empty[j - dy];
-//                 let z_prev = non_empty[j - dz];
-//                 let xy_prev = non_empty[j - dx - dy];
-//                 let xz_prev = non_empty[j - dx - dz];
-//                 let yz_prev = non_empty[j - dy - dz];
-//                 let xyz_prev = non_empty[j - dx - dy - dz];
-//                 let v = (x_side * y_side * z_side)
-//                     - x_prev as usize * (y_side - 1) * (z_side - 1)
-//                     - y_prev as usize * (x_side - 1) * (z_side - 1)
-//                     - z_prev as usize * (x_side - 1) * (y_side - 1)
-//                     - (y_prev || z_prev || yz_prev) as usize * (x_side - 1)
-//                     - (x_prev || z_prev || xz_prev) as usize * (y_side - 1)
-//                     - (x_prev || y_prev || xy_prev) as usize * (z_side - 1)
-//                     - (x_prev || y_prev || z_prev || xy_prev || xz_prev || yz_prev || xyz_prev)
-//                         as usize;
-//                 total += v;
-//                 non_empty[j] = true;
-//                 n += 1;
-//                 dbg!(n, v);
-//             }
-//         }
-//     }
-//     total
-// }
+use self::graph::{Endpoint, Region};
+use petgraph::graph::{NodeIndex, UnGraph};
+use std::collections::{BTreeSet, VecDeque};
+
+#[derive(Debug, Clone, Copy)]
+struct CliqueRegion<T, const D: usize> {
+    region: Region<T, D>, // intersection of all regions in the clique
+    first_is_on: bool,    // whether the first region in the clique is 'on'
+    even: bool,
+}
+
+impl<T: Endpoint, const D: usize> CliqueRegion<T, D> {
+    pub fn new(region: Region<T, D>, is_on: bool) -> Self {
+        Self { region, first_is_on: is_on, even: true }
+    }
+
+    pub fn extend(&self, region: &Region<T, D>) -> Self {
+        Self {
+            region: self.region.intersect_unchecked(region),
+            first_is_on: self.first_is_on,
+            even: !self.even,
+        }
+    }
+}
+
+pub fn find_total_volume<T, E, const D: usize>(g: &UnGraph<Region<T, D>, E>, is_on: &[bool]) -> T
+where
+    T: Endpoint + Sub<Output = T> + Add<Output = T> + Neg<Output = T> + iter::Product,
+{
+    // clique enumeration itself is adapted from networkx.Graph.enumerate_all_cliques()
+
+    // for each node `i`, a set of neighbors `j` with `j` > `i`
+    let neighbors: Vec<BTreeSet<usize>> = g
+        .node_indices()
+        .map(|i| g.neighbors(i).filter(|&j| j > i).map(|i| i.index()).collect())
+        .collect();
+
+    let mut queue: VecDeque<(CliqueRegion<T, D>, Vec<usize>)> = g
+        .node_indices()
+        .map(NodeIndex::index)
+        .zip(&neighbors)
+        .map(|(u, neighbors)| {
+            (
+                CliqueRegion::new(g.raw_nodes()[u].weight, is_on[u]),
+                neighbors.iter().copied().collect(),
+            )
+        })
+        .collect();
+
+    let mut volume = T::default();
+
+    while let Some((base, common_neighbors)) = queue.pop_front() {
+        for (i, &u) in common_neighbors.iter().enumerate() {
+            let mut new_base = base.extend(&g.raw_nodes()[u].weight);
+            // we alter the inclusion/exclusion principle a bit because we also have
+            // non-symmetric set differences; only modify the total volume if the
+            // first element in the clique has the 'on' state
+            let new_common_neighbors = common_neighbors[i + 1..]
+                .iter()
+                .copied()
+                .filter(|&j| neighbors[u].contains(&j))
+                .collect();
+            queue.push_back((new_base, new_common_neighbors));
+        }
+        if base.first_is_on {
+            // if the first element is 'on', it's the normal inclusion/exclusion principle
+            let v = base.region.volume().into();
+            volume = volume + if base.even { v } else { -v };
+        }
+    }
+    volume
+}
 
 #[inline]
-pub fn part2(mut s: &[u8]) -> i32 {
-    0
+pub fn part2(mut s: &[u8]) -> i64 {
+    use graph::*;
+    let (cubes, state) = parse::<i64>(s, true);
+    let g = IntersectionGraph::from_regions_bruteforce(&cubes);
+    find_total_volume(&g, &state)
 }
 
 #[test]
@@ -213,5 +167,5 @@ fn test_day02_part1() {
 
 #[test]
 fn test_day02_part2() {
-    assert_eq!(part2(input()), 0);
+    assert_eq!(part2(input()), 1182153534186233);
 }
