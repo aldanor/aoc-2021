@@ -1,9 +1,11 @@
-use ahash::{AHashMap, AHashSet};
 use std::cmp::Ordering;
+use std::collections::hash_map::Entry;
 use std::collections::{BinaryHeap, HashSet};
 use std::fmt::{self, Debug, Formatter};
 use std::iter;
 use std::ops::Deref;
+
+use ahash::{AHashMap, AHashSet};
 
 use crate::utils::*;
 
@@ -19,6 +21,7 @@ const N_BURROWS: usize = 4;
 const MAX_DEPTH: usize = 4;
 
 const HALLWAY_COORDS: [u8; 8] = [NIL, 0, 1, 3, 5, 7, 9, 10];
+const HALLWAY_COORDS_REV: [u8; 11] = [1, 2, NIL, 3, NIL, 4, NIL, 5, NIL, 6, 7];
 const HALLWAY_COORD_TO_BIT: [u8; 11] = [7, 6, NIL, 5, NIL, 4, NIL, 3, NIL, 2, 1];
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -79,6 +82,38 @@ impl Debug for Location {
     }
 }
 
+const fn build_path_priority() -> [[[u8; 8]; N_BURROWS]; N_PODS] {
+    let mut out: [[[u8; 8]; N_BURROWS]; N_PODS] = [[[NIL; 8]; N_BURROWS]; N_PODS];
+    let mut pod = 0;
+    while pod < N_PODS {
+        let mut burrow = 0;
+        while burrow < N_BURROWS {
+            let x_mid = (2 + pod + burrow) as i8;
+            let mut len = 0_usize;
+            let mut delta = 0_i8;
+            while delta <= 8 {
+                let mut j = 0_i8;
+                while j < if delta == 0 { 1 } else { 2 } {
+                    let sign = -1 + 2 * j;
+                    let x = x_mid + delta * sign;
+                    if x >= 0 && x < 11 {
+                        let h = HALLWAY_COORDS_REV[x as usize];
+                        if h != NIL {
+                            out[pod][burrow][len] = h;
+                            len += 1;
+                        }
+                    }
+                    j += 1;
+                }
+                delta += 1;
+            }
+            burrow += 1;
+        }
+        pod += 1;
+    }
+    out
+}
+
 // high 1..=7 bits indicate whether the cell is free or not
 // (note: bit 7 represents 1, bit represents 2, ... bit 1 represents 7, bit 0 is unused)
 #[derive(Clone, Copy, PartialEq, Eq, Default)]
@@ -101,20 +136,38 @@ impl Hallway {
         (self.0 & (1 << (8 - hallway))) != 0
     }
 
-    // pub const fn get_free_hallways(self, pod: u8, burrow: u8) -> [u8; 8] {
-    //     const fn table() -> [[[[u8; 8]; 128]; N_BURROWS]; N_PODS] {
-    //         let mut out = [[[[NIL; 8]; 128]; N_BURROWS]; N_PODS];
-    //         let mut i_loc = 0;
-    //         while i_loc < 128 {
-    //             let loc = Location::new(i_loc << 1);
-    //
-    //             i_loc += 1;
-    //         }
-    //         out
-    //     }
-    //     const TABLE: [[[[u8; 8]; 128]; N_BURROWS]; N_PODS] = table();
-    //     TABLE[pod as usize][burrow as usize][(self.0 >> 1) as usize]
-    // }
+    pub const fn find_free_hallways(self, pod: u8, burrow: u8) -> [u8; 8] {
+        const fn table() -> [[[[u8; 8]; 128]; N_BURROWS]; N_PODS] {
+            const PATH_PRIORITY: [[[u8; 8]; N_BURROWS]; N_PODS] = build_path_priority();
+            let mut out = [[[[NIL; 8]; 128]; N_BURROWS]; N_PODS];
+            let mut i_hallway = 0_u8;
+            while i_hallway < 128 {
+                let hallway = Hallway::new(i_hallway << 1);
+                let mut pod = 0;
+                while pod < N_PODS {
+                    let mut burrow = 0;
+                    while burrow < N_BURROWS {
+                        let mut i = 0;
+                        let mut len = 0_usize;
+                        while PATH_PRIORITY[pod][burrow][i] != NIL {
+                            let h = PATH_PRIORITY[pod][burrow][i];
+                            if !hallway.is_occupied(h) && hallway.is_path_free(burrow as _, h) {
+                                out[pod][burrow][i_hallway as usize][len] = h;
+                                len += 1;
+                            }
+                            i += 1;
+                        }
+                        burrow += 1;
+                    }
+                    pod += 1;
+                }
+                i_hallway += 1;
+            }
+            out
+        }
+        const TABLE: [[[[u8; 8]; 128]; N_BURROWS]; N_PODS] = table();
+        TABLE[pod as usize][burrow as usize][(self.0 >> 1) as usize]
+    }
 
     pub const fn toggle(mut self, hallway: u8) -> Self {
         self.0 ^= (1 << (8 - hallway));
@@ -310,7 +363,7 @@ impl<const D: usize> GameState<D> {
             })
     }
 
-    pub fn iter_moves(&self, mut callback: impl FnMut(Self)) {
+    pub fn iter_moves(&self, min_cost: Cost, mut callback: impl FnMut(Self)) {
         for pod in (0..N_PODS).rev() {
             let n_remaining = self.n_remaining[pod];
             let n_placed = D as u8 - n_remaining;
@@ -342,22 +395,26 @@ impl<const D: usize> GameState<D> {
                     debug_assert!(self.burrows[b as usize] >= 1);
                     // first check that it's the top pod in the burrow so it's not blocked
                     if d + 1 == self.burrows[b as usize] {
-                        for h in 1..=7 {
-                            // check if the pod can move into the hallway cell
-                            // TODO: optimize iteration over free hallways
-                            if !self.hallway.is_occupied(h) && self.hallway.is_path_free(b, h) {
-                                // ok, we can safely move out
-                                // the pod can move back to its home
-                                let mut state = self.clone();
-                                state.hallway = state.hallway.toggle(h);
-                                state.hallway_pods[h as usize] = pod as u8;
-                                state.burrows[b as usize] -= 1;
-                                state.min_cost += added_min_cost(pod as _, b, h);
-                                state.pods[pod][i] = Location::hallway(h);
-                                state.pods[pod].sort_unstable();
-                                if !state.is_dead_end() {
-                                    callback(state);
-                                }
+                        // find free hallways, ordered by min move cost
+                        for h in self.hallway.find_free_hallways(pod as _, b) {
+                            if h == NIL {
+                                break;
+                            }
+                            let new_min_cost = self.min_cost + added_min_cost(pod as _, b, h);
+                            if new_min_cost >= min_cost {
+                                continue;
+                            }
+                            // ok, we can safely move out
+                            // the pod can move back to its home
+                            let mut state = self.clone();
+                            state.hallway = state.hallway.toggle(h);
+                            state.hallway_pods[h as usize] = pod as u8;
+                            state.burrows[b as usize] -= 1;
+                            state.min_cost = new_min_cost;
+                            state.pods[pod][i] = Location::hallway(h);
+                            state.pods[pod].sort_unstable();
+                            if !state.is_dead_end() {
+                                callback(state);
                             }
                         }
                     }
@@ -406,92 +463,41 @@ impl<const D: usize> Debug for GameState<D> {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-struct Candidate<const D: usize> {
-    state: GameState<D>,
-}
-
-impl<const D: usize> Candidate<D> {
-    pub fn new(state: GameState<D>) -> Self {
-        Self { state }
-    }
-
-    pub fn score(&self) -> (usize, Cost) {
-        // return (0, -self.min_cost);
-        // since we place this on a max-heap, states with the *highest* score will be checked first
-        let pod_scores = self.state.pods.map(|pods| {
-            pods.iter()
-                .map(|&loc| {
-                    if loc.is_nil() {
-                        2
-                        // N_PODS * N_PODS
-                    } else if loc.is_hallway() {
-                        1
-                        // N_PODS
-                    } else {
-                        0
-                    }
-                })
-                .sum::<usize>()
-        });
-        let pod_score = (0..N_PODS).map(|i| pod_scores[i] << (6 * i)).sum::<usize>();
-        let min_cost = self.state.min_cost;
-        (pod_score, -min_cost)
-    }
-}
-
-impl<const D: usize> Deref for Candidate<D> {
-    type Target = GameState<D>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.state
-    }
-}
-
-impl<const D: usize> PartialOrd for Candidate<D> {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.score().partial_cmp(&other.score())
-    }
-}
-
-impl<const D: usize> Ord for Candidate<D> {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.score().cmp(&other.score())
-    }
-}
-
 #[inline]
 pub fn input() -> &'static [u8] {
     include_bytes!("input.txt")
 }
 
-fn solve<const D: usize, const V: bool>(state: GameState<D>) -> Cost {
-    let initial_cost = state.initial_min_cost();
+fn solve<const D: usize, const V: bool>(initial_state: GameState<D>) -> Cost {
+    let initial_cost = initial_state.initial_min_cost();
 
     let mut queue = Vec::with_capacity(1 << 15);
-    queue.push(Candidate::new(state));
+    queue.push(initial_state);
     let mut visited = AHashMap::<_, Cost>::with_capacity((1 << 18) * V as usize);
 
     let mut min_extra_cost = Cost::MAX;
-    let mut n = 0;
-    let mut n_skipped = 0;
-    while let Some(candidate) = queue.pop() {
-        n += 1;
-        if V {
-            visited
-                .entry(*candidate.key())
-                .and_modify(|cost| *cost = (*cost).min(candidate.min_cost))
-                .or_insert(candidate.min_cost);
-        }
-        if candidate.min_cost >= min_extra_cost {
-            n_skipped += 1;
-            continue;
-        } else if candidate.is_done() {
-            min_extra_cost = candidate.min_cost;
+    while let Some(state) = queue.pop() {
+        if state.is_done() {
+            min_extra_cost = state.min_cost;
         } else {
-            candidate.iter_moves(|next| {
-                if !V || visited.get(next.key()).map(|cost| next.min_cost < *cost).unwrap_or(true) {
-                    queue.push(Candidate::new(next));
+            state.iter_moves(min_extra_cost, |next| {
+                if !V
+                    || match visited.entry(*next.key()) {
+                        Entry::Occupied(mut entry) => {
+                            if next.min_cost < *entry.get() {
+                                *entry.get_mut() = next.min_cost;
+                                true
+                            } else {
+                                false
+                            }
+                        }
+                        Entry::Vacant(entry) => {
+                            entry.insert(next.min_cost);
+                            true
+                        }
+                    }
+                {
+                    queue.push(next);
                 }
             });
         }
@@ -516,6 +522,7 @@ pub fn part2(mut s: &[u8]) -> Cost {
     s.extend(b"  #D#B#A#C#\n");
     s.extend(&v[i..]);
     let state = GameState::parse(&s);
+    let h = Hallway::new(0).toggle(3);
     solve::<4, true>(state)
 }
 
