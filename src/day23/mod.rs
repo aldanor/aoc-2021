@@ -90,8 +90,9 @@ const fn build_path_priority() -> [[[u8; 8]; N_BURROWS]; N_PODS] {
         while burrow < N_BURROWS {
             let x_mid = (2 + pod + burrow) as i8;
             let mut len = 0_usize;
-            let mut delta = 0_i8;
-            while delta <= 8 {
+            let rev = pod > 0; // HACK: prioritize 'bad' paths for pod A
+            let mut delta = if !rev { 0_i8 } else { 8_i8 };
+            while delta <= 8 && delta >= 0_i8 {
                 let mut j = 0_i8;
                 while j < if delta == 0 { 1 } else { 2 } {
                     let sign = -1 + 2 * j;
@@ -105,7 +106,7 @@ const fn build_path_priority() -> [[[u8; 8]; N_BURROWS]; N_PODS] {
                     }
                     j += 1;
                 }
-                delta += 1;
+                delta += if !rev { 1_i8 } else { -1 };
             }
             burrow += 1;
         }
