@@ -7,7 +7,6 @@ default-run = "runner"
 
 [dependencies]
 arrayvec = "0.7"
-regex = "1.5"
 memchr = "2.4"
 core_simd = { git = "https://github.com/rust-lang/portable-simd.git" }
 structopt = "0.3"

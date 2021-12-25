@@ -1,8 +1,9 @@
 use crate::utils::*;
 
-use regex::bytes::Regex;
+use arrayvec::ArrayVec;
 
 type D = i16;
+const N: usize = 14;
 
 #[inline]
 pub fn input() -> &'static [u8] {
@@ -65,36 +66,36 @@ enum Block {
     Push(D), // c
 }
 
-fn parse(s: &[u8]) -> [Block; 14] {
-    let re = Regex::new(include_str!("pattern.txt")).unwrap();
-    let mut out = [Block::Pop(D::MIN); 14];
+fn parse_blocks(mut s: &[u8]) -> [Block; N] {
+    let mut out = [Block::Pop(0); N];
     let (mut n_push, mut n_pop) = (0, 0);
-    for cap in re.captures_iter(s) {
-        let [a, b, c] = [1, 2, 3]
-            .map(|i| parse_int_fast_signed::<_, 1, 2>(&mut cap.get(i).unwrap().as_bytes()));
-        assert!([1, 26].contains(&a));
+    for i in 0..N {
+        s = s.skip_past(b'v', 3);
+        let a = parse_int_fast::<u8, 1, 2>(&mut s);
+        assert!(a == 1 || a == 26);
+        let is_pop = a == 26;
+        s = s.skip_past(b'x', 1);
+        let b = parse_int_fast_signed::<D, 1, 2>(&mut s);
+        s = s.skip_past(b'w', 1);
+        s = s.skip_past(b'w', 7);
+        let c = parse_int_fast::<D, 1, 2>(&mut s);
         assert!((-16..=0).contains(&b) || b >= 10);
         assert!((0..=16).contains(&c));
-        let index = n_push + n_pop;
-        out[index] = if a == 1 {
-            assert!(b >= 10);
+        out[i] = if is_pop {
+            n_pop += 1;
+            Block::Pop(b)
+        } else {
             n_push += 1;
             Block::Push(c)
-        } else {
-            assert!(b <= 0);
-            n_pop += 1;
-            Block::Pop(b) // ignore c since we need to block all pushes here
         };
         assert!(n_push >= n_pop);
     }
-    assert_eq!(n_push, 7);
-    assert_eq!(n_pop, 7);
     out
 }
 
-fn solve(blocks: &[Block; 14], smallest: bool) -> u64 {
-    let mut stack = vec![];
-    let mut w = [0; 14];
+fn solve(blocks: &[Block; N], smallest: bool) -> u64 {
+    let mut stack = ArrayVec::<_, N>::new();
+    let mut w = [0; N];
     for (i, &block) in blocks.iter().enumerate() {
         match block {
             Block::Push(c) => stack.push((i, c)),
@@ -112,7 +113,6 @@ fn solve(blocks: &[Block; 14], smallest: bool) -> u64 {
                 assert!((1..=9).contains(&w[i]));
                 assert!((1..=9).contains(&w[j]));
                 assert_eq!(w[j] + d, w[i]);
-                // println!("i={} j={} b={} c={} d={} w[i]={}, w[j]={}", i, j, b, c, d, w[i], w[j]);
             }
         }
     }
@@ -124,15 +124,13 @@ fn solve(blocks: &[Block; 14], smallest: bool) -> u64 {
 }
 
 #[inline]
-pub fn part1(mut s: &[u8]) -> u64 {
-    let blocks = parse(s);
-    solve(&blocks, false)
+pub fn part1(s: &[u8]) -> u64 {
+    solve(&parse_blocks(s), false)
 }
 
 #[inline]
-pub fn part2(mut s: &[u8]) -> u64 {
-    let blocks = parse(s);
-    solve(&blocks, true)
+pub fn part2(s: &[u8]) -> u64 {
+    solve(&parse_blocks(s), true)
 }
 
 #[test]
