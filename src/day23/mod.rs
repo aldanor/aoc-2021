@@ -411,12 +411,13 @@ impl<const D: usize> GameState<D> {
                             state.hallway = state.hallway.toggle(h);
                             state.hallway_pods[h as usize] = pod as u8;
                             state.burrows[b as usize] -= 1;
-                            state.min_cost = new_min_cost;
                             state.pods[pod][i] = Location::hallway(h);
-                            state.pods[pod].sort_unstable();
-                            if !state.is_dead_end() {
-                                callback(state);
+                            if state.is_dead_end() {
+                                continue;
                             }
+                            state.min_cost = new_min_cost;
+                            state.pods[pod].sort_unstable();
+                            callback(state);
                         }
                     }
                 }
