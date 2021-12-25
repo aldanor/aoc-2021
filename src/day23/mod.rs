@@ -514,6 +514,7 @@ pub fn part1(mut s: &[u8]) -> Cost {
 
 #[inline]
 pub fn part2(mut s: &[u8]) -> Cost {
+    // let mut s = include_bytes!("input_alt.txt").as_ref(); // uncomment to use alternative input
     let mut v = s;
     for _ in 0..3 {
         s = s.skip_past(b'\n', 1);
