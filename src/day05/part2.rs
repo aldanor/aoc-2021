@@ -6,7 +6,6 @@ use std::ops::{Range, RangeBounds, RangeInclusive};
 use arrayvec::ArrayVec;
 
 use super::{minmax, parse_num, Coord};
-use crate::utils::*;
 
 use super::projection::{DiagNeg, DiagPos, Horizontal, Vertical};
 use super::projection::{
@@ -211,7 +210,7 @@ impl ActiveSet {
 
 #[derive(Clone, Debug)]
 struct Intersections {
-    intersections: [[u64; { N >> 6 }]; N],
+    intersections: [[u64; N >> 6]; N],
 }
 
 impl Default for Intersections {
@@ -335,28 +334,6 @@ fn triple_line_sweep(events: &EventQueue) -> usize {
     }
 
     ix.len()
-}
-
-#[derive(Debug, Clone)]
-struct SegmentSet {
-    segments: [ArrayVec<Segment, K>; N],
-}
-
-impl Default for SegmentSet {
-    fn default() -> Self {
-        unsafe { std::mem::transmute([0_u8; std::mem::size_of::<Self>()]) }
-    }
-}
-
-impl SegmentSet {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    #[inline]
-    pub fn insert(&mut self, segment: Segment) {
-        self.segments[segment.y as usize].push(segment);
-    }
 }
 
 #[derive(Debug, Clone)]

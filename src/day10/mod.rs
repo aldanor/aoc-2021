@@ -2,11 +2,6 @@ use arrayvec::ArrayVec;
 
 use crate::utils::*;
 
-#[inline]
-pub fn input() -> &'static [u8] {
-    include_bytes!("input.txt")
-}
-
 const fn map() -> [u8; 256] {
     let mut map = [0; 256];
     map[b'(' as usize] = 2;
@@ -44,7 +39,10 @@ const fn part1_scores() -> [u32; 10] {
     scores
 }
 
-#[inline]
+pub fn input() -> &'static [u8] {
+    include_bytes!("input.txt")
+}
+
 pub fn part1(mut s: &[u8]) -> u32 {
     const SCORES: [u32; 10] = part1_scores();
     let mut stack = [0; 128];
@@ -58,7 +56,6 @@ pub fn part1(mut s: &[u8]) -> u32 {
     answer
 }
 
-#[inline]
 pub fn part2(mut s: &[u8]) -> usize {
     let mut scores = ArrayVec::<usize, 256>::new();
     let mut stack = [0; 128];

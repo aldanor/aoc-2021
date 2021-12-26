@@ -1,11 +1,9 @@
 use crate::utils::*;
 
-#[inline]
 pub fn input() -> &'static [u8] {
     include_bytes!("input.txt")
 }
 
-#[inline]
 pub fn part1(mut s: &[u8]) -> usize {
     // 1, 4, 7, 8: number of digits = 2, 4, 3, 7
     let mut count = 0;
@@ -135,7 +133,6 @@ fn decode_outputs<const N: usize>(outputs: &[u8; N], digits: &[u8; 10]) -> usize
     number
 }
 
-#[inline]
 pub fn part2(mut s: &[u8]) -> usize {
     let mut sum = 0;
     while s.len() > 1 {
@@ -193,11 +190,11 @@ pub fn part2_faster(mut s: &[u8]) -> usize {
 }
 
 #[test]
-fn test_day02_part1() {
+fn test_day08_part1() {
     assert_eq!(part1(input()), 301);
 }
 
 #[test]
-fn test_day02_part2() {
+fn test_day08_part2() {
     assert_eq!(part2(input()), 908067);
 }

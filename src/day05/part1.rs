@@ -3,10 +3,7 @@ use std::collections::BTreeSet;
 use arrayvec::ArrayVec;
 
 use super::{minmax, parse_num, Coord};
-use crate::utils::*;
 
-type X = Coord;
-type Y = Coord;
 type Interval = (Coord, Coord); // a 1-D interval, both ends are included
 type Intervals = ArrayVec<Interval, K>; // a variable-size array of 1-D intervals
 type IntervalSet = [Intervals; N * 2]; // interval array for each coordinate (=index)
@@ -66,7 +63,7 @@ fn process_overlaps_1d(intervals: &mut Intervals, overlaps: &mut Intervals) -> u
     // we're almost done, BUT: overlaps themselves may overlap, we need to fix that too
     loop {
         let mut overlap_overlaps = Intervals::new_const();
-        if overlap_overlaps.len() == 0 {
+        if overlap_overlaps.is_empty() {
             break;
         }
         n_overlaps -= process_overlaps_1d(overlaps, &mut overlap_overlaps);
@@ -116,11 +113,15 @@ fn line_sweep_hv(horizontal: &[Intervals], vertical: &[Intervals]) -> usize {
         }
         for &event in events as &_ {
             match event {
-                Event::Start(y) => drop(active.insert(y)),
+                Event::Start(y) => {
+                    active.insert(y);
+                }
                 Event::Vertical((y0, y1)) => {
                     count += active.range(y0..=y1).count();
                 }
-                Event::Finish(y) => drop(active.remove(&y)),
+                Event::Finish(y) => {
+                    active.remove(&y);
+                }
             }
         }
     }
@@ -135,7 +136,6 @@ pub fn solve(s: &[u8]) -> usize {
     let vertical_overlaps = process_overlaps(&mut vertical[..N], &mut n_parallel_overlaps);
     let n_non_overlap_overlaps = line_sweep_hv(&horizontal, &vertical);
     let n_overlap_overlaps = line_sweep_hv(&horizontal_overlaps, &vertical_overlaps);
-    let n_overlaps = n_parallel_overlaps + n_non_overlap_overlaps - n_overlap_overlaps;
 
-    n_overlaps
+    n_parallel_overlaps + n_non_overlap_overlaps - n_overlap_overlaps
 }

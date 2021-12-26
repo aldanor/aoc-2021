@@ -1,11 +1,6 @@
 use crate::utils::*;
 
 #[inline]
-pub fn input() -> &'static [u8] {
-    include_bytes!("input.txt")
-}
-
-#[inline]
 fn count_increasing<T: Integer, const N: usize>(mut s: &[u8]) -> u16 {
     let mut count = 0;
     let mut buf = [T::default(); N];
@@ -23,12 +18,14 @@ fn count_increasing<T: Integer, const N: usize>(mut s: &[u8]) -> u16 {
     count
 }
 
-#[inline]
+pub fn input() -> &'static [u8] {
+    include_bytes!("input.txt")
+}
+
 pub fn part1(s: &[u8]) -> u16 {
     count_increasing::<u16, 2>(s) as _
 }
 
-#[inline]
 pub fn part2(s: &[u8]) -> u16 {
     count_increasing::<u16, 4>(s) as _
 }

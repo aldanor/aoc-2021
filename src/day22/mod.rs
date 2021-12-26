@@ -11,11 +11,6 @@ const N: usize = 512;
 type Range<R> = [R; 2];
 type Cube<T, const D: usize> = [Range<T>; D];
 
-#[inline]
-pub fn input() -> &'static [u8] {
-    include_bytes!("input.txt")
-}
-
 fn parse_cube<T: Integer + Neg<Output = T>>(s: &mut &[u8]) -> Cube<T, 3> {
     let xmin = parse_int_fast_signed::<T, 1, 6>(s);
     *s = s.advance(1);
@@ -181,24 +176,26 @@ where
     total_volume
 }
 
-#[inline]
+pub fn input() -> &'static [u8] {
+    include_bytes!("input.txt")
+}
+
 pub fn part1(mut s: &[u8]) -> i64 {
     let (cubes, state) = parse_input(s, false);
     return find_total_volume::<_, 3, 32, 16>(&cubes, &state);
 }
 
-#[inline]
 pub fn part2(mut s: &[u8]) -> i64 {
     let (cubes, state) = parse_input(s, true);
     return find_total_volume::<_, 3, 512, 32>(&cubes, &state);
 }
 
 #[test]
-fn test_day02_part1() {
+fn test_day22_part1() {
     assert_eq!(part1(input()), 583641);
 }
 
 #[test]
-fn test_day02_part2() {
+fn test_day22_part2() {
     assert_eq!(part2(input()), 1182153534186233);
 }

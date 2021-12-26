@@ -20,23 +20,20 @@ pub fn parse_num<const SKIP: usize>(s: &mut &[u8]) -> Coord {
     parse_int_fast_skip_custom::<Coord, 1, 3, SKIP>(s)
 }
 
-#[inline]
 pub fn input() -> &'static [u8] {
     include_bytes!("input.txt")
 }
 
-#[inline]
 pub fn part1(s: &[u8]) -> usize {
     self::part1::solve(s)
 }
 
-#[inline]
 pub fn part2(s: &[u8]) -> usize {
     self::part2::solve(s)
 }
 
 #[test]
-fn test_day01_part1() {
+fn test_day05_part1() {
     assert_eq!(part1(input()), 5280);
 }
 

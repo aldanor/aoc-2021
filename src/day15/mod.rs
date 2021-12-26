@@ -1,5 +1,3 @@
-use std::cmp::{Ordering, Reverse};
-use std::collections::BinaryHeap;
 use std::iter;
 use std::mem;
 use std::slice;
@@ -8,11 +6,6 @@ use crate::utils::*;
 
 type Weight = u8;
 type Score = u16;
-
-#[inline]
-pub fn input() -> &'static [u8] {
-    include_bytes!("input.txt")
-}
 
 const CAP: usize = 1 << 8;
 const K: usize = 16; // because cell weights are <= 9
@@ -139,13 +132,15 @@ impl<const N: usize, const W: usize, const R: usize> Grid<N, W, R> {
     }
 }
 
-#[inline]
-pub fn part1(mut s: &[u8]) -> Score {
+pub fn input() -> &'static [u8] {
+    include_bytes!("input.txt")
+}
+
+pub fn part1(s: &[u8]) -> Score {
     Grid::<100, 128, 1>::parse(s).dijkstra()
 }
 
-#[inline]
-pub fn part2(mut s: &[u8]) -> Score {
+pub fn part2(s: &[u8]) -> Score {
     Grid::<100, 512, 5>::parse(s).dijkstra()
 }
 

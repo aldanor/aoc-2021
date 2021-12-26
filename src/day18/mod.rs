@@ -6,11 +6,6 @@ use arrayvec::ArrayVec;
 
 use crate::utils::*;
 
-#[inline]
-pub fn input() -> &'static [u8] {
-    include_bytes!("input.txt")
-}
-
 const N: usize = 32;
 
 #[inline]
@@ -356,7 +351,10 @@ fn test_day18_number() {
     );
 }
 
-#[inline]
+pub fn input() -> &'static [u8] {
+    include_bytes!("input.txt")
+}
+
 pub fn part1(mut s: &[u8]) -> usize {
     let mut num = Number::default();
     while s.len() > 1 {
@@ -372,7 +370,6 @@ pub fn part1(mut s: &[u8]) -> usize {
     num.magnitude()
 }
 
-#[inline]
 pub fn part2(mut s: &[u8]) -> usize {
     use rayon::prelude::*;
 

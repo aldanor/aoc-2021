@@ -6,11 +6,6 @@ use crate::utils::*;
 
 const N: usize = 10;
 
-#[inline]
-pub fn input() -> &'static [u8] {
-    include_bytes!("input.txt")
-}
-
 type Rules = [[u8; N]; N];
 
 fn parse(mut s: &[u8]) -> (Vec<u8>, Rules) {
@@ -19,7 +14,7 @@ fn parse(mut s: &[u8]) -> (Vec<u8>, Rules) {
     s = s.advance(k + 2);
     let (mut rev_map, mut n_chars, mut rules) = ([0xff; 256], 0, [[0; N]; N]);
     for _ in 0..N * N {
-        assert!(s.len() >= 1);
+        assert!(!s.is_empty());
         let mut line = [0; 3];
         for (i, j) in [0, 1, 6].into_iter().enumerate() {
             let c = s.get_at(j);
@@ -33,7 +28,7 @@ fn parse(mut s: &[u8]) -> (Vec<u8>, Rules) {
         rules[x as usize][y as usize] = z;
         s = s.advance(8);
     }
-    let word = word.into_iter().map(|c| rev_map[*c as usize]).collect();
+    let word = word.iter().map(|c| rev_map[*c as usize]).collect();
     (word, rules)
 }
 
@@ -74,14 +69,16 @@ where
     counts[N - 1] - counts[0] + T::from(1_u8)
 }
 
-#[inline]
-pub fn part1(mut s: &[u8]) -> i16 {
+pub fn input() -> &'static [u8] {
+    include_bytes!("input.txt")
+}
+
+pub fn part1(s: &[u8]) -> i16 {
     let (word, rules) = parse(s);
     solve(&word, &rules, 10)
 }
 
-#[inline]
-pub fn part2(mut s: &[u8]) -> i64 {
+pub fn part2(s: &[u8]) -> i64 {
     let (word, rules) = parse(s);
     solve(&word, &rules, 40)
 }

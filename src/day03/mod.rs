@@ -1,11 +1,9 @@
 use crate::utils::*;
 
-#[inline]
 pub fn input() -> &'static [u8] {
     include_bytes!("input.txt")
 }
 
-#[inline]
 pub fn part1(mut s: &[u8]) -> u32 {
     use core_simd::{u16x16, u16x32};
     const N: usize = 12;
@@ -45,7 +43,6 @@ pub fn part1(mut s: &[u8]) -> u32 {
     most as u32 * least as u32
 }
 
-#[inline]
 pub fn part2(mut s: &[u8]) -> u32 {
     const N: usize = 12;
     let n = s.len() / (N + 1);

@@ -1,11 +1,4 @@
-use std::ops::{AddAssign, Mul};
-
 use crate::utils::*;
-
-#[inline]
-pub fn input() -> &'static [u8] {
-    include_bytes!("input.txt")
-}
 
 type T = usize;
 
@@ -70,22 +63,24 @@ pub fn solve<const N: usize>(mut s: &[u8]) -> usize {
     counts.into_iter().sum()
 }
 
-#[inline]
+pub fn input() -> &'static [u8] {
+    include_bytes!("input.txt")
+}
+
 pub fn part1(s: &[u8]) -> usize {
     solve16::<{ 80 >> 4 }>(s)
 }
 
-#[inline]
-pub fn part2(mut s: &[u8]) -> usize {
+pub fn part2(s: &[u8]) -> usize {
     solve::<256>(s)
 }
 
 #[test]
-fn test_day02_part1() {
+fn test_day06_part1() {
     assert_eq!(part1(input()), 345387);
 }
 
 #[test]
-fn test_day02_part2() {
+fn test_day06_part2() {
     assert_eq!(part2(input()), 1574445493136);
 }

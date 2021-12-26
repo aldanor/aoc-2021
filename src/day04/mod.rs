@@ -8,11 +8,6 @@ type Number = u8;
 type Score = u32;
 
 #[inline]
-pub fn input() -> &'static [u8] {
-    include_bytes!("input.txt")
-}
-
-#[inline]
 fn parse_numbers(s: &mut &[u8]) -> Vec<Number> {
     let mut numbers = Vec::with_capacity(1 << 7);
     while s.get_at(0) != b'\n' {
@@ -24,7 +19,6 @@ fn parse_numbers(s: &mut &[u8]) -> Vec<Number> {
 
 type Board = [[Number; N]; N];
 
-#[inline]
 fn parse_board(s: &mut &[u8]) -> Board {
     let mut board = Board::default();
     for i in 0..N {
@@ -40,7 +34,6 @@ fn parse_board(s: &mut &[u8]) -> Board {
     board
 }
 
-#[inline]
 fn time_to_win(board: &Board, draw_times: &[usize]) -> usize {
     let (mut max_cols, mut max_rows) = ([0; N], [0; N]);
     for i in 0..N {
@@ -55,7 +48,6 @@ fn time_to_win(board: &Board, draw_times: &[usize]) -> usize {
     max_cols.into_iter().min().unwrap_or(0).min(max_rows.into_iter().min().unwrap_or(0))
 }
 
-#[inline]
 fn solve(mut s: &[u8], ttw_is_better: impl Fn(usize, usize) -> bool, ttw_init: usize) -> Score {
     // Credits for the algorithm idea: @orlp
 
@@ -89,12 +81,14 @@ fn solve(mut s: &[u8], ttw_is_better: impl Fn(usize, usize) -> bool, ttw_init: u
     sum_unmasked * numbers.get_at(ttw_best) as Score
 }
 
-#[inline]
+pub fn input() -> &'static [u8] {
+    include_bytes!("input.txt")
+}
+
 pub fn part1(s: &[u8]) -> Score {
     solve(s, |ttw, ttw_best| ttw < ttw_best, usize::MAX)
 }
 
-#[inline]
 pub fn part2(s: &[u8]) -> Score {
     solve(s, |ttw, ttw_best| ttw > ttw_best, 0)
 }

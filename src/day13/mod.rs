@@ -12,11 +12,6 @@ const CHAR_W: usize = 4;
 const CHAR_H: usize = 6;
 
 #[inline]
-pub fn input() -> &'static [u8] {
-    include_bytes!("input.txt")
-}
-
-#[inline]
 fn fold_1d(coord: &mut T, pivot: T) {
     if *coord > pivot {
         *coord = 2 * pivot - *coord
@@ -68,7 +63,10 @@ fn parse_points(s: &mut &[u8]) -> Vec<(T, T)> {
     points
 }
 
-#[inline]
+pub fn input() -> &'static [u8] {
+    include_bytes!("input.txt")
+}
+
 pub fn part1(mut s: &[u8]) -> usize {
     let mut points = parse_points(&mut s);
     Fold::parse(&mut s).unwrap().apply(points.iter_mut());
@@ -99,10 +97,8 @@ fn display_points<'a>(points: impl IntoIterator<Item = &'a Point>) -> String {
 }
 
 pub fn extract_letters<'a>(points: impl IntoIterator<Item = &'a Point> + Copy) -> [u8; N_CHARS] {
-    assert!(CHAR_W * CHAR_H <= 32);
-
     let (xmin, xmax, ymin, ymax) =
-        points.into_iter().fold((T::MAX, T::MIN, T::MAX, T::MIN), |mut acc, &(x, y)| {
+        points.into_iter().fold((T::MAX, T::MIN, T::MAX, T::MIN), |acc, &(x, y)| {
             (acc.0.min(x), acc.1.max(x), acc.2.min(y), acc.3.max(y))
         });
     let w = (xmax - xmin + 1) as usize;
@@ -150,7 +146,6 @@ pub fn extract_letters<'a>(points: impl IntoIterator<Item = &'a Point> + Copy) -
     out
 }
 
-#[inline]
 pub fn part2(mut s: &[u8]) -> String {
     let mut points = parse_points(&mut s);
     while let Some(fold) = Fold::parse(&mut s) {

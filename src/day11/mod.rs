@@ -6,11 +6,6 @@ use crate::utils::*;
 const N: usize = 10;
 const W: usize = N + 2;
 
-#[inline]
-pub fn input() -> &'static [u8] {
-    include_bytes!("input.txt")
-}
-
 type Cell = i16;
 type Grid = [[Cell; W]; W];
 
@@ -71,12 +66,14 @@ fn evolve_dfs(mut grid: Grid) -> impl Iterator<Item = usize> {
     })
 }
 
-#[inline]
+pub fn input() -> &'static [u8] {
+    include_bytes!("input.txt")
+}
+
 pub fn part1(mut s: &[u8]) -> usize {
     evolve_dfs(parse_grid(s)).take(100).sum()
 }
 
-#[inline]
 pub fn part2(mut s: &[u8]) -> usize {
     1 + evolve_dfs(parse_grid(s)).take_while(|n| *n != N * N).count()
 }

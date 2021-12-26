@@ -3,18 +3,16 @@ use crate::utils::*;
 const N: usize = 100;
 const M: usize = 1 << 10;
 
-#[inline]
-pub fn input() -> &'static [u8] {
-    include_bytes!("input.txt")
-}
-
 macro_rules! lanes_min {
     ($lhs:expr, $rhs:expr) => {
         ($lhs).lanes_ge(($rhs)).select(($rhs), ($lhs))
     };
 }
 
-#[inline]
+pub fn input() -> &'static [u8] {
+    include_bytes!("input.txt")
+}
+
 pub fn part1(mut s: &[u8]) -> usize {
     type T = i8;
     type S = core_simd::Simd<T, 64>;
@@ -182,7 +180,6 @@ pub fn part2_dfs(mut s: &[u8]) -> usize {
     sizes[sizes.len() - 3..].iter().product::<usize>()
 }
 
-#[inline]
 pub fn part2(mut s: &[u8]) -> usize {
     // This is basically a 4-connected CCL problem for binary images.
 
@@ -227,11 +224,11 @@ pub fn part2(mut s: &[u8]) -> usize {
 }
 
 #[test]
-fn test_day02_part1() {
+fn test_day09_part1() {
     assert_eq!(part1(input()), 518);
 }
 
 #[test]
-fn test_day02_part2() {
+fn test_day09_part2() {
     assert_eq!(part2(input()), 949905);
 }

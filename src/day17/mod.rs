@@ -6,11 +6,6 @@ use crate::utils::*;
 
 type T = i32;
 
-#[inline]
-pub fn input() -> &'static [u8] {
-    include_bytes!("input.txt")
-}
-
 fn parse(mut s: &[u8]) -> ((T, T), (T, T)) {
     s = s.advance(15);
     let x0 = parse_int_fast::<T, 1, 3>(&mut s);
@@ -27,7 +22,10 @@ fn parse(mut s: &[u8]) -> ((T, T), (T, T)) {
     ((x0, x1), (-y0, -y1))
 }
 
-#[inline]
+pub fn input() -> &'static [u8] {
+    include_bytes!("input.txt")
+}
+
 pub fn part1(mut s: &[u8]) -> T {
     let ((_xmin, _xmax), (ymin, _ymax)) = parse(s);
     (ymin * (ymin + 1)) / 2
@@ -51,7 +49,6 @@ fn v_range(min: T, max: T, n: T, lb: T) -> Range<T> {
     vmin..vmax
 }
 
-#[inline]
 pub fn part2(mut s: &[u8]) -> usize {
     let ((xmin, xmax), (ymin, ymax)) = parse(s);
 
@@ -131,11 +128,11 @@ pub fn part2(mut s: &[u8]) -> usize {
 }
 
 #[test]
-fn test_day02_part1() {
+fn test_day17_part1() {
     assert_eq!(part1(input()), 3655);
 }
 
 #[test]
-fn test_day02_part2() {
+fn test_day17_part2() {
     assert_eq!(part2(input()), 1447);
 }

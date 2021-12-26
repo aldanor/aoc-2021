@@ -8,11 +8,6 @@ type C = i32; // cost function
 const N: usize = 1 << 10;
 
 #[inline]
-pub fn input() -> &'static [u8] {
-    include_bytes!("input.txt")
-}
-
-#[inline]
 fn parse_input(mut s: &[u8]) -> ArrayVec<T, N> {
     let mut x = ArrayVec::new_const();
     while s.len() > 1 {
@@ -37,6 +32,14 @@ fn cost1(x: &[T], m: T) -> C {
 }
 
 #[inline]
+fn mean_floor(x: &[T]) -> T {
+    (x.iter().map(|&x| x as C).sum::<C>() / x.len() as C) as T
+}
+
+pub fn input() -> &'static [u8] {
+    include_bytes!("input.txt")
+}
+
 pub fn part1(mut s: &[u8]) -> C {
     /*
     Cost function:
@@ -50,12 +53,6 @@ pub fn part1(mut s: &[u8]) -> C {
     cost1(&x, m)
 }
 
-#[inline]
-fn mean_floor(x: &[T]) -> T {
-    (x.iter().map(|&x| x as C).sum::<C>() / x.len() as C) as T
-}
-
-#[inline]
 pub fn part2(mut s: &[u8]) -> C {
     /*
     Cost function:
@@ -95,11 +92,11 @@ pub fn part2(mut s: &[u8]) -> C {
 }
 
 #[test]
-fn test_day02_part1() {
+fn test_day07_part1() {
     assert_eq!(part1(input()), 335271);
 }
 
 #[test]
-fn test_day02_part2() {
+fn test_day07_part2() {
     assert_eq!(part2(input()), 95851339);
 }

@@ -288,12 +288,10 @@ fn test_correctness() {
     }
 }
 
-#[inline]
 pub fn input() -> &'static [u8] {
     include_bytes!("input.txt")
 }
 
-#[inline]
 pub fn part1(s: &[u8]) -> usize {
     let mut g = Grid::parse(s);
     for i in 1.. {
@@ -304,7 +302,6 @@ pub fn part1(s: &[u8]) -> usize {
     0
 }
 
-#[inline]
 pub fn part2(_: &[u8]) -> usize {
     0
 }

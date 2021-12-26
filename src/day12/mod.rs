@@ -4,11 +4,6 @@ use arrayvec::ArrayVec;
 
 use crate::utils::*;
 
-#[inline]
-pub fn input() -> &'static [u8] {
-    include_bytes!("input.txt")
-}
-
 const MAX_NODES: usize = 16;
 const MAX_EDGES: usize = 8;
 const START: usize = 0;
@@ -213,12 +208,14 @@ impl Graph {
     }
 }
 
-#[inline]
+pub fn input() -> &'static [u8] {
+    include_bytes!("input.txt")
+}
+
 pub fn part1(mut s: &[u8]) -> usize {
     Graph::parse(s).trim().count_paths(false)
 }
 
-#[inline]
 pub fn part2(mut s: &[u8]) -> usize {
     Graph::parse(s).trim().count_paths(true)
 }

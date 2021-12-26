@@ -4,11 +4,6 @@ use crate::utils::*;
 
 type BitVec = ArrayVec<u8, { 1 << 13 }>;
 
-#[inline]
-pub fn input() -> &'static [u8] {
-    include_bytes!("input.txt")
-}
-
 const fn hex2bin_map() -> [[u8; 4]; 256] {
     // for each u8 character, if it's in 0-9A-F range, convert it to binary representation
     let mut map = [[0xff; 4]; 256];
@@ -131,12 +126,14 @@ fn eval_packet(s: &mut &[u8]) -> usize {
     v
 }
 
-#[inline]
+pub fn input() -> &'static [u8] {
+    include_bytes!("input.txt")
+}
+
 pub fn part1(mut s: &[u8]) -> usize {
     sum_versions(&mut parse_hex2bin(s).as_slice())
 }
 
-#[inline]
 pub fn part2(mut s: &[u8]) -> usize {
     eval_packet(&mut parse_hex2bin(s).as_slice())
 }

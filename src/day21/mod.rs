@@ -1,10 +1,5 @@
 use crate::utils::*;
 
-#[inline]
-pub fn input() -> &'static [u8] {
-    include_bytes!("input.txt")
-}
-
 fn parse(mut s: &[u8]) -> [u16; 2] {
     s = s.advance(28);
     let p0 = parse_int_fast::<_, 1, 2>(&mut s);
@@ -13,7 +8,10 @@ fn parse(mut s: &[u8]) -> [u16; 2] {
     [p0, p1]
 }
 
-#[inline]
+pub fn input() -> &'static [u8] {
+    include_bytes!("input.txt")
+}
+
 pub fn part1(mut s: &[u8]) -> usize {
     const fn deterministic_rolls<const R: usize>() -> [[u16; 16]; R] {
         let mut table = [[0; 16]; R];
@@ -63,7 +61,6 @@ pub fn part1(mut s: &[u8]) -> usize {
     }
 }
 
-#[inline]
 pub fn part2(mut s: &[u8]) -> u64 {
     const ROLLS: [(usize, u64); 7] = [(3, 1), (4, 3), (5, 6), (6, 7), (7, 6), (8, 3), (9, 1)];
     let p = parse(s);
@@ -105,11 +102,11 @@ pub fn part2(mut s: &[u8]) -> u64 {
 }
 
 #[test]
-fn test_day02_part1() {
+fn test_day21_part1() {
     assert_eq!(part1(input()), 707784);
 }
 
 #[test]
-fn test_day02_part2() {
+fn test_day21_part2() {
     assert_eq!(part2(input()), 157595953724471);
 }

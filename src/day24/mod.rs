@@ -5,11 +5,6 @@ use arrayvec::ArrayVec;
 type D = i16;
 const N: usize = 14;
 
-#[inline]
-pub fn input() -> &'static [u8] {
-    include_bytes!("input.txt")
-}
-
 /*
 The following pattern repeats 14 times:
 
@@ -123,12 +118,14 @@ fn solve(blocks: &[Block; N], smallest: bool) -> u64 {
     out
 }
 
-#[inline]
+pub fn input() -> &'static [u8] {
+    include_bytes!("input.txt")
+}
+
 pub fn part1(s: &[u8]) -> u64 {
     solve(&parse_blocks(s), false)
 }
 
-#[inline]
 pub fn part2(s: &[u8]) -> u64 {
     solve(&parse_blocks(s), true)
 }

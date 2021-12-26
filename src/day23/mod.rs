@@ -465,11 +465,6 @@ impl<const D: usize> Debug for GameState<D> {
     }
 }
 
-#[inline]
-pub fn input() -> &'static [u8] {
-    include_bytes!("input.txt")
-}
-
 fn solve<const D: usize, const V: bool>(initial_state: GameState<D>) -> Cost {
     let initial_cost = initial_state.initial_min_cost();
 
@@ -507,12 +502,14 @@ fn solve<const D: usize, const V: bool>(initial_state: GameState<D>) -> Cost {
     initial_cost + min_extra_cost
 }
 
-#[inline]
+pub fn input() -> &'static [u8] {
+    include_bytes!("input.txt")
+}
+
 pub fn part1(mut s: &[u8]) -> Cost {
     solve::<2, false>(GameState::parse(s))
 }
 
-#[inline]
 pub fn part2(mut s: &[u8]) -> Cost {
     // let mut s = include_bytes!("input_alt.txt").as_ref(); // uncomment to use alternative input
     let mut v = s;

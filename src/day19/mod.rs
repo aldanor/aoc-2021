@@ -22,11 +22,6 @@ const DST: usize = 1;
 const AXES: [usize; 3] = [0, 1, 2];
 
 #[inline]
-pub fn input() -> &'static [u8] {
-    include_bytes!("input.txt")
-}
-
-#[inline]
 fn manhattan(a: Point, b: Point) -> T {
     (a[0] - b[0]).abs() + (a[1] - b[1]).abs() + (a[2] - b[2]).abs()
 }
@@ -449,7 +444,10 @@ fn reconstruct_scanner_map(scanners: &ArrayVec<Scanner, S>) -> ArrayVec<Mapping,
     mappings
 }
 
-#[inline]
+pub fn input() -> &'static [u8] {
+    include_bytes!("input.txt")
+}
+
 pub fn part1(mut s: &[u8]) -> usize {
     let scanners = Scanner::parse_multiple(s);
     let mappings = reconstruct_scanner_map(&scanners);
@@ -462,7 +460,6 @@ pub fn part1(mut s: &[u8]) -> usize {
     set.len()
 }
 
-#[inline]
 pub fn part2(mut s: &[u8]) -> usize {
     let scanners = Scanner::parse_multiple(s);
     let mappings = reconstruct_scanner_map(&scanners);

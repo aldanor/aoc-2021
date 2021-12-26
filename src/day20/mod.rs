@@ -88,11 +88,6 @@ impl Board {
     }
 }
 
-#[inline]
-pub fn input() -> &'static [u8] {
-    include_bytes!("input.txt")
-}
-
 const fn range<const N: usize>() -> [usize; N] {
     let mut out = [0; N];
     let mut i = 0;
@@ -157,7 +152,10 @@ unsafe fn step_x8(src: *const u8, dst: *mut u8, bitmap: *const u8) -> usize {
     v.horizontal_sum() as _
 }
 
-#[inline]
+pub fn input() -> &'static [u8] {
+    include_bytes!("input.txt")
+}
+
 pub fn part1(mut s: &[u8]) -> usize {
     let bitmap = parse_bitmap(&mut s);
     let mut board = Board::parse(s, &bitmap);
@@ -165,7 +163,6 @@ pub fn part1(mut s: &[u8]) -> usize {
     board.step_dumb(&bitmap)
 }
 
-#[inline]
 pub fn part2(mut s: &[u8]) -> usize {
     let bitmap = parse_bitmap(&mut s);
     let mut board = Board::parse(s, &bitmap);

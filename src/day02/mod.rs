@@ -1,10 +1,5 @@
 use crate::utils::*;
 
-#[inline]
-pub fn input() -> &'static [u8] {
-    include_bytes!("input.txt")
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Dir {
     Forward(i32),
@@ -37,7 +32,10 @@ impl Dir {
     }
 }
 
-#[inline]
+pub fn input() -> &'static [u8] {
+    include_bytes!("input.txt")
+}
+
 pub fn part1(mut s: &[u8]) -> i32 {
     let (mut horizontal, mut depth) = (0, 0);
     while let Some(dir) = Dir::parse_next(&mut s) {
@@ -50,7 +48,6 @@ pub fn part1(mut s: &[u8]) -> i32 {
     horizontal * depth
 }
 
-#[inline]
 pub fn part2(mut s: &[u8]) -> i32 {
     let (mut horizontal, mut depth, mut aim) = (0, 0, 0);
     while let Some(dir) = Dir::parse_next(&mut s) {
