@@ -549,6 +549,57 @@ fn solve<const D: usize, const V: bool>(initial_state: GameState<D>) -> Cost {
     initial_cost + min_extra_cost
 }
 
+fn check_correctness() -> bool {
+    let mut s = include_bytes!("tests.txt").as_ref();
+    let mut inputs = vec![];
+    while s.len() > 1 {
+        let top = &s[..4];
+        s = s.advance(5);
+        let bottom = &s[..4];
+        s = s.advance(5);
+        let expected = [parse_int_fast::<Cost, 1, 6>(&mut s), parse_int_fast::<Cost, 1, 6>(&mut s)];
+        let input_str = format!(
+            "#############\n#...........#\n###{}#{}#{}#{}###\n  #{}#{}#{}#{}#\n  #########\n",
+            char::from(top[0]),
+            char::from(top[1]),
+            char::from(top[2]),
+            char::from(top[3]),
+            char::from(bottom[0]),
+            char::from(bottom[1]),
+            char::from(bottom[2]),
+            char::from(bottom[3]),
+        );
+        inputs.push((
+            input_str,
+            String::from_utf8(top.to_vec()).unwrap(),
+            String::from_utf8(bottom.to_vec()).unwrap(),
+            expected[0],
+            expected[1],
+        ));
+    }
+    let t0 = std::time::Instant::now();
+    let mut n_fail = 0;
+    for (s, top, bottom, expected1, expected2) in &inputs {
+        let answer1 = solve::<2, false>(GameState::parse(s.as_bytes()));
+        let answer2 = part2(s.as_bytes());
+        if answer1 != *expected1 || answer2 != *expected2 {
+            println!(
+                "Test fail: {} {}: answer1={} answer2={} (expected1={} expected2={})",
+                top, bottom, answer1, answer2, expected1, expected2
+            );
+            n_fail += 1;
+        }
+    }
+    let t1 = std::time::Instant::now();
+    println!("Total time: {:?}", t1 - t0);
+    if n_fail != 0 {
+        println!("{} failed out of {} tests.", n_fail, inputs.len());
+    } else {
+        println!("All {} tests passed.", inputs.len());
+    }
+    n_fail == 0
+}
+
 pub fn input() -> &'static [u8] {
     include_bytes!("input.txt")
 }
