@@ -112,7 +112,7 @@ impl<const N: usize, const W: usize, const R: usize> Grid<N, W, R> {
         queue.push(0, Self::START);
 
         while queue.iter_min(|queue, i| {
-            let cell = grid[i].clone();
+            let cell = grid[i];
             for j in [i - W, i - 1, i + 1, i + W] {
                 let neighbor = &mut grid[j];
                 if neighbor.weight == 0xff {

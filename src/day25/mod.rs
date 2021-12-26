@@ -269,8 +269,7 @@ impl Grid {
         // used for debugging, to check correctness
         use ahash::AHasher;
         let (w, h) = (self.width, self.height);
-        let mut v = Vec::with_capacity(w * h); // exclude ghost cells
-        v.resize(w * h, 0);
+        let mut v = vec![0; w * h]; // exclude ghost cells
         for i in 0..h {
             v[i * w..][..w].copy_from_slice(&self.cells[(i + 1) * (w + 2) + 1..][..w]);
         }

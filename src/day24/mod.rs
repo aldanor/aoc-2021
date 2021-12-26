@@ -64,7 +64,7 @@ enum Block {
 fn parse_blocks(mut s: &[u8]) -> [Block; N] {
     let mut out = [Block::Pop(0); N];
     let (mut n_push, mut n_pop) = (0, 0);
-    for i in 0..N {
+    for block in out.iter_mut() {
         s = s.skip_past(b'v', 3);
         let a = parse_int_fast::<u8, 1, 2>(&mut s);
         assert!(a == 1 || a == 26);
@@ -76,7 +76,7 @@ fn parse_blocks(mut s: &[u8]) -> [Block; N] {
         let c = parse_int_fast::<D, 1, 2>(&mut s);
         assert!((-16..=0).contains(&b) || b >= 10);
         assert!((0..=16).contains(&c));
-        out[i] = if is_pop {
+        *block = if is_pop {
             n_pop += 1;
             Block::Pop(b)
         } else {

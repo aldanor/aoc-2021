@@ -116,7 +116,7 @@ impl Number {
     }
 
     pub fn add_and_reduce(&mut self, other: &Self) {
-        self.add(&other);
+        self.add(other);
         self.reduce();
     }
 
@@ -157,19 +157,17 @@ impl Number {
 
         // handle first case separately to avoid extra branching in explode-only case
         let mut i = 0;
-        if EXPLODE_ONLY {
-            if cells[0].depth == 5 {
-                if cells.len() != 2 {
-                    cells[2].value += cells[1].value;
-                }
-                out.push(Cell::new(0, 4));
-                i = 2;
+        if EXPLODE_ONLY && cells[0].depth == 5 {
+            if cells.len() != 2 {
+                cells[2].value += cells[1].value;
             }
+            out.push(Cell::new(0, 4));
+            i = 2;
         }
 
         // main loop
         while i < cells.len() {
-            let cell = cells[i].clone();
+            let cell = cells[i];
             if cell.depth == 5 {
                 // note that this cannot happen on the last iteration as we explode stuff
                 // (because if the last pair explodes we'll catch the left element of it)

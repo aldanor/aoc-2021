@@ -18,7 +18,7 @@ const HALLWAY_COORDS: [u8; 8] = [NIL, 0, 1, 3, 5, 7, 9, 10];
 const HALLWAY_COORDS_REV: [u8; 11] = [1, 2, NIL, 3, NIL, 4, NIL, 5, NIL, 6, 7];
 const HALLWAY_COORD_TO_BIT: [u8; 11] = [7, 6, NIL, 5, NIL, 4, NIL, 3, NIL, 2, 1];
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 struct Location(u8); // high 4 bits - hallway 1..=7, 2 bits burrow id, 2 bits burrow depth
 
 impl Location {
@@ -113,7 +113,7 @@ const fn build_path_priority() -> [[[u8; 8]; N_BURROWS]; N_PODS] {
 
 // high 1..=7 bits indicate whether the cell is free or not
 // (note: bit 7 represents 1, bit represents 2, ... bit 1 represents 7, bit 0 is unused)
-#[derive(Clone, Copy, PartialEq, Eq, Default, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Default)]
 struct Hallway(u8);
 
 impl Hallway {
@@ -209,7 +209,7 @@ impl Hallway {
             out
         }
         const PATH_MASKS: [[u8; 8]; N_BURROWS] = build_path_masks();
-        return (PATH_MASKS[burrow as usize][hallway as usize] & self.0) == 0;
+        (PATH_MASKS[burrow as usize][hallway as usize] & self.0) == 0
     }
 }
 
@@ -258,7 +258,7 @@ const fn added_min_cost(pod: Pod, burrow: u8, hallway: u8) -> Cost {
     TABLE[pod as usize][burrow as usize][hallway as usize]
 }
 
-#[derive(Clone, Copy, Hash)]
+#[derive(Clone, Copy)]
 struct GameState<const D: usize> {
     pods: [[Location; D]; N_PODS], // exact locations of all pods (or NIL)
     n_remaining: [u8; N_PODS],     // remaining number of pods to place, 0..=4
@@ -377,7 +377,7 @@ impl<const D: usize> GameState<D> {
                         // then, check if all pods in the home burrow are of correct type
                         if n_placed == self.burrows[pod] {
                             // the pod can move back to its home
-                            let mut state = self.clone();
+                            let mut state = *self;
                             state.hallway = state.hallway.toggle(h);
                             state.hallway_pods[h as usize] = NIL;
                             state.n_remaining[pod] -= 1;
@@ -402,7 +402,7 @@ impl<const D: usize> GameState<D> {
                             let max = b.max(pod as _);
                             if self.hallway.is_path_free(min, max + 3) {
                                 // we can actually move it to its home directly
-                                let mut state = self.clone();
+                                let mut state = *self;
                                 // note: moving into its own burrow doesn't change min cost
                                 state.n_remaining[pod] -= 1;
                                 state.burrows[pod] += 1;
@@ -461,7 +461,7 @@ impl<const D: usize> GameState<D> {
                             }
                             // ok, we can safely move out
                             // the pod can move back to its home
-                            let mut state = self.clone();
+                            let mut state = *self;
                             state.hallway = state.hallway.toggle(h);
                             state.hallway_pods[h as usize] = pod as u8;
                             state.burrows[b as usize] -= 1;

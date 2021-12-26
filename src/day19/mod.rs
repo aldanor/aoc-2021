@@ -368,9 +368,11 @@ impl Scanner {
                 if let [Some(x), Some(y), Some(z)] = axes {
                     if let [Some(xneg), Some(yneg), Some(zneg)] = is_neg {
                         if x != y && y != z && (x | y | z) == 3 {
-                            let mut mapping = Mapping::default();
-                            mapping.axes = [x, y, z];
-                            mapping.is_neg = [xneg, yneg, zneg];
+                            let mut mapping = Mapping {
+                                axes: [x, y, z],
+                                is_neg: [xneg, yneg, zneg],
+                                ..Default::default()
+                            };
                             let (v0_src, v0_dst) = (first[SRC], first[DST]);
                             let v0_dst_no_offset = mapping.dst_to_src(v0_dst);
                             mapping.offset = AXES.map(|i| v0_src[i] - v0_dst_no_offset[i]);

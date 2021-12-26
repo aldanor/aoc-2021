@@ -234,6 +234,11 @@ impl<'a, T: Copy> UnsafeStack<'a, T> {
     }
 
     #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    #[inline]
     pub fn into_slice(self) -> &'a [T] {
         &self.stack[..self.len()]
     }

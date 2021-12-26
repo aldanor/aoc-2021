@@ -106,7 +106,7 @@ where
             &region,
             &common_neighbors,
             &neighbors,
-            &regions,
+            regions,
             is_even,
         );
     }
@@ -139,7 +139,7 @@ where
     T: Integer + Neg<Output = T>,
 {
     // this is a modified/recursive version of the networkx.clique.find_clique() algorithm
-    let mut total_volume = volume(&region);
+    let mut total_volume = volume(region);
     // we know that the first element is always 'on' because we have filtered it out
     // at the queue creation stage, so the normal inclusion/exclusion principle applies
     if !is_even {
@@ -180,12 +180,12 @@ pub fn input() -> &'static [u8] {
 
 pub fn part1(s: &[u8]) -> i64 {
     let (cubes, state) = parse_input(s, false);
-    return find_total_volume::<_, 3, 32, 16>(&cubes, &state);
+    find_total_volume::<_, 3, 32, 16>(&cubes, &state)
 }
 
 pub fn part2(s: &[u8]) -> i64 {
     let (cubes, state) = parse_input(s, true);
-    return find_total_volume::<_, 3, 512, 32>(&cubes, &state);
+    find_total_volume::<_, 3, 512, 32>(&cubes, &state)
 }
 
 #[test]

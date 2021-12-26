@@ -135,7 +135,7 @@ impl ActiveSetElement {
         if self.len == 2 {
             self.x_overlap_start = x_start;
         }
-        (&mut self.x_ends[..self.len]).sort_unstable_by(|a, b| b.cmp(&a));
+        (&mut self.x_ends[..self.len]).sort_unstable_by(|a, b| b.cmp(a));
     }
 
     pub fn remove(&mut self, x_end: X) -> Range<X> {
@@ -181,7 +181,7 @@ impl ActiveSet {
         self.active
             .entry(segment.y)
             .and_modify(|element| element.insert(segment.x_start, segment.x_end))
-            .or_insert(ActiveSetElement::new(segment.x_end));
+            .or_insert_with(|| ActiveSetElement::new(segment.x_end));
     }
 
     pub fn remove(&mut self, segment: &Segment) -> Range<X> {
