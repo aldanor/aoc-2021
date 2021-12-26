@@ -56,7 +56,7 @@ impl From<(D, I, I)> for Distance {
 }
 
 #[inline]
-fn distances_sort_unique_intersect(d0: &ArrayDist, d1: &ArrayDist) -> ([ArrayDist; 2], usize) {
+fn distances_sort_unique_intersect(d0: &[Distance], d1: &[Distance]) -> ([ArrayDist; 2], usize) {
     let mut ix0 = ArrayVec::new();
     let mut ix1 = ArrayVec::new();
     let (n0, n1) = (d0.len(), d1.len());
@@ -80,7 +80,7 @@ fn distances_sort_unique_intersect(d0: &ArrayDist, d1: &ArrayDist) -> ([ArrayDis
 
 #[inline]
 fn arrayvec_sorted_intersect_by_key<T: Copy, K: Ord + Copy, F: Fn(&T) -> K, const CAP: usize>(
-    d0: &ArrayVec<T, CAP>, d1: &ArrayVec<T, CAP>, key: F,
+    d0: &[T], d1: &[T], key: F,
 ) -> ([ArrayVec<T, CAP>; 2], usize) {
     let mut ix0 = ArrayVec::new();
     let mut ix1 = ArrayVec::new();
@@ -200,8 +200,8 @@ impl Mapping {
 struct Scanner {
     id: u8,
     beacons: ArrayVec<Point, B>,
-    pairwise_distances: ArrayVec<Distance, { B * B }>,
-    distance_matrix: ArrayVec<ArrayVec<i32, B>, B>,
+    pairwise_distances: Vec<Distance>,
+    distance_matrix: Vec<i32>,
 }
 
 impl Scanner {
@@ -218,8 +218,8 @@ impl Scanner {
             unsafe { beacons.push_unchecked([x, y, z]) };
         }
         *s = s.advance(1);
-        let pairwise_distances = ArrayVec::new();
-        let distance_matrix = ArrayVec::new();
+        let pairwise_distances = Vec::with_capacity(B * B);
+        let distance_matrix = Vec::with_capacity(B * B);
         Self { id, beacons, pairwise_distances, distance_matrix }
     }
 
@@ -240,21 +240,15 @@ impl Scanner {
 
     fn fill(&mut self) {
         let n = self.len();
-        unsafe {
-            self.distance_matrix = mem::zeroed();
-            self.distance_matrix.set_len(n);
-            for i in 0..n {
-                self.distance_matrix[i].set_len(n);
-            }
-        }
+        unsafe { self.distance_matrix.set_len(n * n) };
         self.pairwise_distances.clear();
         for i in 0..(n - 1) {
             let a = self.beacons[i];
             for j in (i + 1)..n {
                 let b = self.beacons[j];
                 let d = square_dist(a, b);
-                self.distance_matrix[i][j] = d;
-                self.distance_matrix[j][i] = d;
+                self.distance_matrix[i * n + j] = d;
+                self.distance_matrix[j * n + i] = d;
                 self.pairwise_distances.push(Distance::from((d, i as I, j as I)));
             }
         }
@@ -275,33 +269,12 @@ impl Scanner {
             if d0.len() == (n[0] * (n[0] - 1)) / 2 && d1.len() == (n[1] * (n[1] - 1)) / 2 {
                 distances_sort_unique_intersect(d0, d1)
             } else {
-                arrayvec_sorted_intersect_by_key(d0, d1, |x| x.d)
+                arrayvec_sorted_intersect_by_key::<_, _, _, { B * B }>(d0, d1, |x| x.d)
             };
 
         if ix[0].len().min(ix[1].len()) < 66 {
             return None; // C(12, 2) = 66, minimum number of edges required
         }
-
-        // // fast track
-        // if (ix[0].len(), ix[1].len(), n_unique) == (66, 66, 66) {
-        //     let mut v = [0_u32; 2];
-        //     for k in 0..2 {
-        //         for d in &ix[k] {
-        //             v[k] |= (1 << d.i) | (1 << d.j);
-        //         }
-        //     }
-        //     if v.map(|v| v.count_ones()) == [12, 12] {
-        //         return Some([0, 1].map(|k| {
-        //             let mut out = ArrayVec::new();
-        //             for i in 0..n[k] {
-        //                 if v[k] & (1 << i) != 0 {
-        //                     out.push(i);
-        //                 }
-        //             }
-        //             out
-        //         }));
-        //     }
-        // }
 
         // try to build a fully connected polyhedron with at least 12 vertices
         let mut v = [find_polyhedron(&ix[0], n[0])?, find_polyhedron(&ix[1], n[1])?];
@@ -318,7 +291,8 @@ impl Scanner {
                 let vn = v[0].len();
                 for i in 0..vn {
                     let j = if i != vn - 1 { i + 1 } else { 0 };
-                    let d = self.distance_matrix[v[0][i] as usize][v[0][j] as usize];
+                    let d =
+                        self.distance_matrix[(v[0][i] as usize) * self.len() + (v[0][j] as usize)];
                     let edge1 = ix[1][ix[1].binary_search_by_key(&d, |x| x.d).ok()?];
                     chain1.push(edge1);
                 }
