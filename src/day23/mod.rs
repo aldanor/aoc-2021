@@ -536,9 +536,6 @@ fn solve<const D: usize, const V: bool>(initial_state: GameState<D>) -> Cost {
     queue.push(initial_state);
     let mut visited = AHashMap::<_, Cost>::with_capacity((1 << 18) * V as usize);
 
-    // let mut paths = AHashMap::with_capacity(1 << 18);
-    // let mut optimal_state = None;
-
     let mut min_extra_cost = Cost::MAX;
     let mut n_states = 0;
     while let Some(state) = queue.pop() {
@@ -546,12 +543,9 @@ fn solve<const D: usize, const V: bool>(initial_state: GameState<D>) -> Cost {
         if state.min_cost >= min_extra_cost {
             continue;
         } else if state.is_done() {
-            // dbg!((n_states, state.min_cost));
-            // optimal_state = Some(state);
             min_extra_cost = state.min_cost;
         } else {
             state.iter_moves(min_extra_cost, |next| {
-                // paths.insert(next, state);
                 if !V
                     || match visited.entry(*next.key()) {
                         Entry::Occupied(mut entry) => {
@@ -573,20 +567,6 @@ fn solve<const D: usize, const V: bool>(initial_state: GameState<D>) -> Cost {
             });
         }
     }
-    // dbg!(n_states);
-    // let mut s = optimal_state.unwrap();
-    // let mut steps = vec![s];
-    // while let Some(q) = paths.get(&steps[0]) {
-    //     steps.insert(0, *q);
-    // }
-    // println!("Initial min cost: {}", initial_cost);
-    // println!("---");
-    // for (i, step) in steps.iter().enumerate() {
-    //     println!("STEP #{}:\n{:?}\n", i, step);
-    // }
-    // println!("---");
-    // println!("Min extra cost: {}", min_extra_cost);
-    // println!("Min total cost: {}", initial_cost + min_extra_cost);
 
     initial_cost + min_extra_cost
 }
@@ -637,7 +617,7 @@ fn check_correctness() -> bool {
     if n_fail != 0 {
         println!("{} failed out of {} tests.", n_fail, inputs.len());
     } else {
-        println!("All {} tests passed.", inputs.len());
+        println!("All {} tests have passed.", inputs.len());
     }
     n_fail == 0
 }
