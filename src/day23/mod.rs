@@ -364,7 +364,12 @@ impl<const D: usize> GameState<D> {
             })
     }
 
+    pub fn can_any_reach_home(&self) -> bool {
+        (0..N_PODS).any(|i| self.burrows[i] == D as u8 - self.n_remaining[i])
+    }
+
     pub fn iter_moves(&self, min_cost: Cost, mut callback: impl FnMut(Self)) {
+        let can_any_reach_home = self.can_any_reach_home();
         for pod in (0..N_PODS).rev() {
             let n_remaining = self.n_remaining[pod];
             let n_placed = D as u8 - n_remaining;
@@ -403,7 +408,28 @@ impl<const D: usize> GameState<D> {
                             }
                             let new_min_cost = self.min_cost + added_min_cost(pod as _, b, h);
                             if new_min_cost >= min_cost {
+                                /*
+                                We already have a solution that is better than the minimum
+                                cost that the new state has - so the new state will never
+                                be optimal and can be safely ignored.
+                                 */
                                 continue;
+                            } else if !can_any_reach_home {
+                                /*
+                                If no pods can reach their home, it will never be optimal
+                                for any pods to move into the hallway onto their shortest
+                                path - that is, they have to move out of the way first.
+                                This can be easily checked by comparing the added min
+                                cost for the new state to the current min cost;
+                                 */
+                                // all burrows have wrong pods on top
+                                if pod as u8 != b {
+                                    // the pod is not in its home burrow
+                                    if new_min_cost == self.min_cost {
+                                        // must move out of the way first
+                                        continue;
+                                    }
+                                }
                             }
                             // ok, we can safely move out
                             // the pod can move back to its home
@@ -418,6 +444,27 @@ impl<const D: usize> GameState<D> {
                             state.min_cost = new_min_cost;
                             state.pods[pod].sort_unstable();
                             callback(state);
+                        }
+
+                        // weirdly, it doesn't speed things up (???)
+                        if false {
+                            // can we move it directly to its home?
+                            if n_placed == self.burrows[pod] {
+                                // need to check if the path is free first
+                                let min = b.min(pod as _);
+                                let max = b.max(pod as _);
+                                if self.hallway.is_path_free(min, 2 * max + 1) {
+                                    // we can actually move it to its home directly
+                                    let mut state = self.clone();
+                                    state.n_remaining[pod] -= 1;
+                                    state.burrows[pod] += 1;
+                                    state.burrows[b as usize] -= 1;
+                                    state.pods[pod][i..].rotate_left(1);
+                                    state.pods[pod][D - 1] = Location::nil();
+                                    callback(state);
+                                    // note: moving into its own burrow doesn't change min cost
+                                }
+                            }
                         }
                     }
                 }
