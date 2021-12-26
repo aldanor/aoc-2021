@@ -90,7 +90,8 @@ const fn build_path_priority() -> [[[u8; 8]; N_BURROWS]; N_PODS] {
         while burrow < N_BURROWS {
             let x_mid = (2 + pod + burrow) as i8;
             let mut len = 0_usize;
-            let rev = pod > 0; // HACK: prioritize 'bad' paths for pod A
+            let rev = true; // it looks like with the update algorithm this is not needed
+                            // let rev = pod > 0; // HACK: prioritize 'bad' paths for pod A
             let mut delta = if !rev { 0_i8 } else { 8_i8 };
             while delta <= 8 && delta >= 0_i8 {
                 let mut j = 0_i8;
@@ -117,7 +118,7 @@ const fn build_path_priority() -> [[[u8; 8]; N_BURROWS]; N_PODS] {
 
 // high 1..=7 bits indicate whether the cell is free or not
 // (note: bit 7 represents 1, bit represents 2, ... bit 1 represents 7, bit 0 is unused)
-#[derive(Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Clone, Copy, PartialEq, Eq, Default, Hash)]
 struct Hallway(u8);
 
 impl Hallway {
@@ -261,7 +262,7 @@ const fn added_min_cost(pod: Pod, burrow: u8, hallway: u8) -> Cost {
     TABLE[pod as usize][burrow as usize][hallway as usize]
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Hash)]
 struct GameState<const D: usize> {
     pods: [[Location; D]; N_PODS], // exact locations of all pods (or NIL)
     n_remaining: [u8; N_PODS],     // remaining number of pods to place, 0..=4
@@ -364,13 +365,15 @@ impl<const D: usize> GameState<D> {
             })
     }
 
-    pub fn can_any_reach_home(&self) -> bool {
+    pub fn any_burrow_placeable(&self) -> bool {
         (0..N_PODS).any(|i| self.burrows[i] == D as u8 - self.n_remaining[i])
     }
 
     pub fn iter_moves(&self, min_cost: Cost, mut callback: impl FnMut(Self)) {
-        let can_any_reach_home = self.can_any_reach_home();
-        for pod in (0..N_PODS).rev() {
+        let any_burrow_placeable = self.any_burrow_placeable();
+
+        // first check if anyone can move home immediately
+        for pod in 0..N_PODS {
             let n_remaining = self.n_remaining[pod];
             let n_placed = D as u8 - n_remaining;
             for i in 0..n_remaining as usize {
@@ -393,9 +396,44 @@ impl<const D: usize> GameState<D> {
                             state.pods[pod][D - 1] = Location::nil();
                             // note: moving into its own burrow doesn't change min cost
                             callback(state);
+                            return; // moving home is always optimal; return immediately
                         }
                     }
                 } else {
+                    // case 2: the pod is still in the burrow
+                    let (b, d) = loc.get_burrow();
+                    debug_assert!(self.burrows[b as usize] >= 1);
+                    // first check that it's the top pod in the burrow so it's not blocked
+                    if d + 1 == self.burrows[b as usize] {
+                        // can we move it directly to its home?
+                        if n_placed == self.burrows[pod] {
+                            // need to check if the path is free first
+                            let min = b.min(pod as _);
+                            let max = b.max(pod as _);
+                            if self.hallway.is_path_free(min, max + 3) {
+                                // we can actually move it to its home directly
+                                let mut state = self.clone();
+                                // note: moving into its own burrow doesn't change min cost
+                                state.n_remaining[pod] -= 1;
+                                state.burrows[pod] += 1;
+                                state.burrows[b as usize] -= 1;
+                                state.pods[pod][i..].rotate_left(1);
+                                state.pods[pod][D - 1] = Location::nil();
+                                callback(state);
+                                return; // return immediately (moving home is always optimal)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // at this point we know that noone can move back to their home directly
+        for pod in (0..N_PODS).rev() {
+            let n_remaining = self.n_remaining[pod];
+            for i in 0..n_remaining as usize {
+                let loc = self.pods[pod][i];
+                if loc.is_burrow() {
                     // case 2: the pod is still in the burrow
                     let (b, d) = loc.get_burrow();
                     debug_assert!(self.burrows[b as usize] >= 1);
@@ -414,7 +452,7 @@ impl<const D: usize> GameState<D> {
                                 be optimal and can be safely ignored.
                                  */
                                 continue;
-                            } else if !can_any_reach_home {
+                            } else {
                                 /*
                                 If no pods can reach their home, it will never be optimal
                                 for any pods to move into the hallway onto their shortest
@@ -444,27 +482,6 @@ impl<const D: usize> GameState<D> {
                             state.min_cost = new_min_cost;
                             state.pods[pod].sort_unstable();
                             callback(state);
-                        }
-
-                        // weirdly, it doesn't speed things up (???)
-                        if false {
-                            // can we move it directly to its home?
-                            if n_placed == self.burrows[pod] {
-                                // need to check if the path is free first
-                                let min = b.min(pod as _);
-                                let max = b.max(pod as _);
-                                if self.hallway.is_path_free(min, 2 * max + 1) {
-                                    // we can actually move it to its home directly
-                                    let mut state = self.clone();
-                                    state.n_remaining[pod] -= 1;
-                                    state.burrows[pod] += 1;
-                                    state.burrows[b as usize] -= 1;
-                                    state.pods[pod][i..].rotate_left(1);
-                                    state.pods[pod][D - 1] = Location::nil();
-                                    callback(state);
-                                    // note: moving into its own burrow doesn't change min cost
-                                }
-                            }
                         }
                     }
                 }
@@ -519,12 +536,22 @@ fn solve<const D: usize, const V: bool>(initial_state: GameState<D>) -> Cost {
     queue.push(initial_state);
     let mut visited = AHashMap::<_, Cost>::with_capacity((1 << 18) * V as usize);
 
+    // let mut paths = AHashMap::with_capacity(1 << 18);
+    // let mut optimal_state = None;
+
     let mut min_extra_cost = Cost::MAX;
+    let mut n_states = 0;
     while let Some(state) = queue.pop() {
-        if state.is_done() {
+        n_states += 1;
+        if state.min_cost >= min_extra_cost {
+            continue;
+        } else if state.is_done() {
+            // dbg!((n_states, state.min_cost));
+            // optimal_state = Some(state);
             min_extra_cost = state.min_cost;
         } else {
             state.iter_moves(min_extra_cost, |next| {
+                // paths.insert(next, state);
                 if !V
                     || match visited.entry(*next.key()) {
                         Entry::Occupied(mut entry) => {
@@ -546,6 +573,21 @@ fn solve<const D: usize, const V: bool>(initial_state: GameState<D>) -> Cost {
             });
         }
     }
+    // dbg!(n_states);
+    // let mut s = optimal_state.unwrap();
+    // let mut steps = vec![s];
+    // while let Some(q) = paths.get(&steps[0]) {
+    //     steps.insert(0, *q);
+    // }
+    // println!("Initial min cost: {}", initial_cost);
+    // println!("---");
+    // for (i, step) in steps.iter().enumerate() {
+    //     println!("STEP #{}:\n{:?}\n", i, step);
+    // }
+    // println!("---");
+    // println!("Min extra cost: {}", min_extra_cost);
+    // println!("Min total cost: {}", initial_cost + min_extra_cost);
+
     initial_cost + min_extra_cost
 }
 
@@ -580,8 +622,8 @@ fn check_correctness() -> bool {
     let t0 = std::time::Instant::now();
     let mut n_fail = 0;
     for (s, top, bottom, expected1, expected2) in &inputs {
-        let answer1 = solve::<2, false>(GameState::parse(s.as_bytes()));
-        let answer2 = part2(s.as_bytes());
+        let answer1 = solve_part1(s.as_bytes());
+        let answer2 = solve_part2(s.as_bytes());
         if answer1 != *expected1 || answer2 != *expected2 {
             println!(
                 "Test fail: {} {}: answer1={} answer2={} (expected1={} expected2={})",
@@ -604,12 +646,16 @@ pub fn input() -> &'static [u8] {
     include_bytes!("input.txt")
 }
 
-pub fn part1(mut s: &[u8]) -> Cost {
+fn solve_part1(s: &[u8]) -> Cost {
     solve::<2, false>(GameState::parse(s))
 }
 
-pub fn part2(mut s: &[u8]) -> Cost {
-    // let mut s = include_bytes!("input_alt.txt").as_ref(); // uncomment to use alternative input
+pub fn part1(s: &[u8]) -> Cost {
+    // let mut s = include_bytes!("input_hardest.txt").as_ref();
+    solve_part1(s)
+}
+
+fn solve_part2(mut s: &[u8]) -> Cost {
     let mut v = s;
     for _ in 0..3 {
         s = s.skip_past(b'\n', 1);
@@ -620,8 +666,12 @@ pub fn part2(mut s: &[u8]) -> Cost {
     s.extend(b"  #D#B#A#C#\n");
     s.extend(&v[i..]);
     let state = GameState::parse(&s);
-    let h = Hallway::new(0).toggle(3);
     solve::<4, true>(state)
+}
+
+pub fn part2(s: &[u8]) -> Cost {
+    // let mut s = include_bytes!("input_hardest.txt").as_ref();
+    solve_part2(s)
 }
 
 #[test]
