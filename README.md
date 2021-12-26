@@ -47,3 +47,28 @@ Here are day 23 timings for another user's input (which is also included in the 
 ```
 day 23    1657 μs   1623 μs  
 ```
+
+Quick notes on solutions to some of the problems that were less trivial (the problems that
+are not mentioned were straightforward):
+
+- Day 5: part 1 is a simple orthogonal line sweep. Part 2 uses a modified version of line
+  sweep algorithm where the scanline is vertical and there are separate active sets for
+  all three types of lines (horizontal and both diagonal types).
+- Day 9: uses union-find algorithm.
+- Day 12: uses a cache when traversing the graph; also, simplifies the graph by removing
+  some irrelevant nodes that have a single edge leading to a small cave.
+- Day 18: exploits the fact that there can be no split operations until there's at least
+  one explode, so everything is unrolled in two passes; the first pass is explodes-only
+  and in the second pass we process the splits inline.
+- Day 19: uses the fact that an unambiguous solution for a pair of scanners is guaranteed
+  if there's a 12-point overlap; only L2 pairwise distances between beacons are used to
+  find matching sets - then we build a connectivity graph between scanners.
+- Day 20: naive solution; planned to optimize it via SIMD but haven't had time to finish.
+- Day 21: classic bottom-up 5-D dynamic programming.
+- Day 22: one of the most non-trivial solutions - used the fact that overlaps of different
+  cardinality can be found by enumerating cliques of the overlap graph; ported and modified
+  networkx clique finding algorithm to make it work (surprisingly, it ended up being fast).
+- Day 23: track minimum possible remaining cost for all moves, use compact data structures
+  and run DFS with some heuristics (try to select worst moves for A) and cost tracking.
+- Day 24: relies on the specific structure of the input (stack machine).
+- Day 25: used SIMD, ghost cells and lookup tables to speed it up (this is the BML traffic model).
