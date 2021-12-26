@@ -55,8 +55,8 @@ are not mentioned were straightforward):
   sweep algorithm where the scanline is vertical and there are separate active sets for
   all three types of lines (horizontal and both diagonal types).
 - Day 9: uses union-find algorithm.
-- Day 12: uses a cache when traversing the graph; also, simplifies the graph by removing
-  some irrelevant nodes that have a single edge leading to a small cave.
+- Day 12: uses a cache when traversing the graph; also, in part 1 simplifies the graph by 
+  removing some irrelevant nodes that have a single edge leading to a small cave.
 - Day 18: exploits the fact that there can be no split operations until there's at least
   one explode, so everything is unrolled in two passes; the first pass is explodes-only
   and in the second pass we process the splits inline.

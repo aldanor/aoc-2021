@@ -217,7 +217,8 @@ pub fn part1(mut s: &[u8]) -> usize {
 }
 
 pub fn part2(mut s: &[u8]) -> usize {
-    Graph::parse(s).trim().count_paths(true)
+    // note: we can't trim the graph here since we can return to small caves twice
+    Graph::parse(s).count_paths(true)
 }
 
 #[test]
