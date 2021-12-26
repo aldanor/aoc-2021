@@ -338,7 +338,7 @@ fn triple_line_sweep(events: &EventQueue) -> usize {
 
 #[derive(Debug, Clone)]
 struct EventQueue {
-    events: [[ArrayVec<Event, K>; 3]; N], // [start, vertical, finish]
+    events: Vec<[ArrayVec<Event, K>; 3]>, // [start, vertical, finish]
 }
 
 impl EventQueue {
@@ -350,7 +350,15 @@ impl EventQueue {
         const START: usize = 0;
         const VERTICAL: usize = 1;
         const FINISH: usize = 2;
-        let mut events = [0; N].map(|_| [0; 3].map(|_| ArrayVec::new()));
+        let mut events = Vec::<[ArrayVec<Event, K>; 3]>::with_capacity(N);
+        unsafe {
+            events.set_len(N);
+            std::slice::from_raw_parts_mut(
+                events.as_mut_ptr() as *mut u8,
+                N * std::mem::size_of::<[ArrayVec<Event, K>; 3]>(),
+            )
+            .fill(0);
+        }
         for ((x0, y0), (x1, y1)) in lines {
             let (dx, dy) = (x1 - x0, y1 - y0);
             if dx == 0 {

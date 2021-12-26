@@ -6,24 +6,24 @@ use super::{minmax, parse_num, Coord};
 
 type Interval = (Coord, Coord); // a 1-D interval, both ends are included
 type Intervals = ArrayVec<Interval, K>; // a variable-size array of 1-D intervals
-type IntervalSet = [Intervals; N * 2]; // interval array for each coordinate (=index)
+type IntervalSet = [Intervals; N]; // interval array for each coordinate (=index)
 
-const N: usize = 1 << 11; // max coord * 2
+const N: usize = 1 << 10; // max coord
 const K: usize = 8; // max number of intervals per coord
 
 fn parse_horizontal_vertical(mut s: &[u8]) -> (IntervalSet, IntervalSet) {
-    let mut horizontal = [0; N * 2].map(|_| ArrayVec::new());
-    let mut vertical = [0; N * 2].map(|_| ArrayVec::new());
+    let mut horizontal = [0; N].map(|_| ArrayVec::new());
+    let mut vertical = [0; N].map(|_| ArrayVec::new());
 
     while s.len() > 1 {
         let (x0, y0) = (parse_num::<1>(&mut s), parse_num::<4>(&mut s));
         let (x1, y1) = (parse_num::<1>(&mut s), parse_num::<1>(&mut s));
         if y0 == y1 {
             let (y, (x0, x1)) = (y0 as usize, minmax(x0, x1));
-            unsafe { horizontal.get_unchecked_mut(y).push_unchecked((x0, x1)) };
+            horizontal[y].push((x0, x1));
         } else if x0 == x1 {
             let (x, (y0, y1)) = (x0 as usize, minmax(y0, y1));
-            unsafe { vertical.get_unchecked_mut(x).push_unchecked((y0, y1)) };
+            vertical[x].push((y0, y1));
         }
     }
 
@@ -74,7 +74,7 @@ fn process_overlaps_1d(intervals: &mut Intervals, overlaps: &mut Intervals) -> u
 
 #[inline]
 fn process_overlaps(interval_set: &mut [Intervals], n_overlaps: &mut usize) -> IntervalSet {
-    let mut overlaps = [0; N * 2].map(|_| ArrayVec::new());
+    let mut overlaps = [0; N].map(|_| ArrayVec::new());
     for (coord, intervals) in interval_set.iter_mut().enumerate() {
         if intervals.len() > 1 {
             *n_overlaps += process_overlaps_1d(intervals, &mut overlaps[coord]);
