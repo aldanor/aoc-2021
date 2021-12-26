@@ -32,6 +32,8 @@ impl Integer for u64 {}
 impl Integer for i16 {}
 impl Integer for i32 {}
 impl Integer for i64 {}
+impl Integer for usize {}
+impl Integer for isize {}
 
 #[inline(always)]
 pub fn parse_int_fast_skip_custom<
