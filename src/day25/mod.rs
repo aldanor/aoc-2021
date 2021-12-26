@@ -1,7 +1,9 @@
 use std::hash::Hasher;
+use std::mem::MaybeUninit;
 
 use crate::utils::*;
 
+use ahash::AHasher;
 use arrayvec::ArrayVec;
 use core_simd::Simd;
 
@@ -10,6 +12,218 @@ const K: usize = 32768; // max # of grid cells
 const EMPTY: u8 = 0;
 const LR: u8 = 1; // east (left-right)
 const TB: u8 = 2; // south (top-bottom)
+
+const MIN_WIDTH: usize = 129;
+const MAX_WIDTH: usize = 191;
+const MAX_HEIGHT: usize = 137;
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+struct PackedGrid {
+    blocks: [[u64; 4]; MAX_HEIGHT],
+    width: usize,
+    height: usize,
+}
+
+impl PackedGrid {
+    pub fn new(width: usize, height: usize) -> Self {
+        assert!(width >= MIN_WIDTH && width <= MAX_WIDTH && height <= MAX_HEIGHT);
+        let blocks = [[0; 4]; MAX_HEIGHT];
+        Self { blocks, width, height }
+    }
+
+    fn uninit(&self) -> Self {
+        let blocks = unsafe { MaybeUninit::uninit().assume_init() };
+        Self { blocks, ..*self }
+    }
+
+    fn last_block_size(&self) -> usize {
+        self.width - 64 * 2
+    }
+
+    fn last_block_mask(&self) -> u64 {
+        (1_u64 << self.last_block_size()) - 1
+    }
+
+    pub fn move_right(&self) -> Self {
+        let mut out = self.uninit();
+        let (s, m) = (self.last_block_size() - 1, self.last_block_mask());
+        assert!(s < 64);
+        for i in 0..self.height {
+            let (src, dst) = (&self.blocks[i], &mut out.blocks[i]);
+            dst[0] = src[0] << 1 | src[2] >> s;
+            dst[1] = src[1] << 1 | src[0] >> 63;
+            dst[2] = (src[2] << 1 | src[1] >> 63) & m;
+        }
+        out
+    }
+
+    pub fn move_left(&self) -> Self {
+        let mut out = self.uninit();
+        let (s, m) = (self.last_block_size() - 1, self.last_block_mask());
+        assert!(s < 64);
+        for i in 0..self.height {
+            let (src, dst) = (&self.blocks[i], &mut out.blocks[i]);
+            dst[0] = src[0] >> 1 | src[1] << 63;
+            dst[1] = src[1] >> 1 | src[2] << 63;
+            dst[2] = (src[2] >> 1 | src[0] << s) & m;
+        }
+        out
+    }
+
+    pub fn move_up(&self) -> Self {
+        let mut out = self.uninit();
+        for i in 0..self.height - 1 {
+            out.blocks[i] = self.blocks[i + 1];
+        }
+        out.blocks[self.height - 1] = self.blocks[0];
+        out
+    }
+
+    pub fn move_down(&self) -> Self {
+        let mut out = self.uninit();
+        for i in 1..self.height {
+            out.blocks[i] = self.blocks[i - 1];
+        }
+        out.blocks[0] = self.blocks[self.height - 1];
+        out
+    }
+
+    fn apply_binary_op(&self, other: &Self, func: impl Fn(u64, u64) -> u64) -> Self {
+        let mut out = self.uninit();
+        for i in 0..self.height {
+            for j in 0..4 {
+                out.blocks[i][j] = func(self.blocks[i][j], other.blocks[i][j]);
+            }
+        }
+        out
+    }
+
+    pub fn bit_and(&self, other: &Self) -> Self {
+        self.apply_binary_op(other, |x, y| x & y)
+    }
+
+    pub fn bit_or(&self, other: &Self) -> Self {
+        self.apply_binary_op(other, |x, y| x | y)
+    }
+
+    pub fn bit_xor(&self, other: &Self) -> Self {
+        self.apply_binary_op(other, |x, y| x ^ y)
+    }
+
+    pub fn blocks(&self) -> &[[u64; 4]] {
+        &self.blocks[..self.height]
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct Map {
+    lr: PackedGrid,
+    tb: PackedGrid,
+}
+
+impl Map {
+    pub fn parse(mut s: &[u8]) -> Self {
+        let w = s.memchr(b'\n');
+        let mut lr = PackedGrid::new(w, MAX_HEIGHT);
+        let mut tb = PackedGrid::new(w, MAX_HEIGHT);
+        let mut h = 0;
+        while s.len() > 1 {
+            for i in 0..w {
+                let c = s.get_at(i);
+                lr.blocks[h][i >> 6] |= ((c == b'>') as u64) << (i & 0x3f);
+                tb.blocks[h][i >> 6] |= ((c == b'v') as u64) << (i & 0x3f);
+            }
+            s = s.advance(w + 1);
+            h += 1;
+        }
+        assert!(h <= MAX_HEIGHT);
+        lr.height = h;
+        tb.height = h;
+        Self { lr, tb }
+    }
+
+    fn non_empty(&self) -> PackedGrid {
+        self.lr.bit_or(&self.tb)
+    }
+
+    fn move_lr(&mut self) -> bool {
+        let non_empty = self.non_empty();
+        let after_move = self.lr.move_right();
+        let is_blocked = after_move.bit_and(&non_empty);
+        let moved_ok = after_move.bit_xor(&is_blocked);
+        let stay_in_place = is_blocked.move_left();
+        let lr = moved_ok.bit_or(&stay_in_place);
+        let changed = lr.blocks() != self.lr.blocks();
+        self.lr = lr;
+        changed
+    }
+
+    fn move_tb(&mut self) -> bool {
+        let non_empty = self.non_empty();
+        let after_move = self.tb.move_down();
+        let is_blocked = after_move.bit_and(&non_empty);
+        let moved_ok = after_move.bit_xor(&is_blocked);
+        let stay_in_place = is_blocked.move_up();
+        let tb = moved_ok.bit_or(&stay_in_place);
+        let changed = tb.blocks() != self.tb.blocks();
+        self.tb = tb;
+        changed
+    }
+
+    pub fn step(&mut self) -> bool {
+        let lr_changed = self.move_lr();
+        let tb_changed = self.move_tb();
+        lr_changed || tb_changed
+    }
+
+    #[allow(unused)]
+    pub fn to_grid(&self) -> Vec<u8> {
+        // used for debugging only
+        let (w, h) = (self.lr.width, self.lr.height);
+        let mut v = vec![0; w * h];
+        for i in 0..h {
+            for j in 0..w {
+                let lr = self.lr.blocks[i][j >> 6] & (1 << (j & 0x3f)) != 0;
+                let tb = self.tb.blocks[i][j >> 6] & (1 << (j & 0x3f)) != 0;
+                assert!(!lr || !tb);
+                v[i * w + j] = if lr {
+                    LR
+                } else if tb {
+                    TB
+                } else {
+                    EMPTY
+                };
+            }
+        }
+        v
+    }
+
+    #[allow(unused)]
+    pub fn hash(&self) -> u64 {
+        // used for debugging, to check correctness
+        let v = self.to_grid();
+        let mut h = AHasher::new_with_keys(0, 0);
+        h.write(&v);
+        h.finish()
+    }
+
+    #[allow(unused)]
+    pub fn print(&self) {
+        let (w, h) = (self.lr.width, self.lr.height);
+        let v = self.to_grid();
+        for i in 0..h {
+            for j in 0..w {
+                let c = match v[i * w + j] {
+                    LR => '>',
+                    TB => 'v',
+                    _ => '.',
+                };
+                print!("{}", c);
+            }
+            println!();
+        }
+    }
+}
 
 const fn build_lookup_tables() -> [[u8; 64]; 2] {
     // the 6 bits are: "AACCBB" - after/center/before
@@ -77,6 +291,7 @@ struct Grid {
 }
 
 impl Grid {
+    #[allow(unused)]
     pub fn parse(mut s: &[u8]) -> Self {
         let w = s.memchr(b'\n');
         let mut h = 0;
@@ -170,6 +385,7 @@ impl Grid {
         changed
     }
 
+    #[allow(unused)]
     pub fn step_simd(&mut self) -> bool {
         const LOOKUP: [[u8; 64]; 2] = build_lookup_tables();
 
@@ -267,7 +483,6 @@ impl Grid {
     #[allow(unused)]
     pub fn hash(&self) -> u64 {
         // used for debugging, to check correctness
-        use ahash::AHasher;
         let (w, h) = (self.width, self.height);
         let mut v = vec![0; w * h]; // exclude ghost cells
         for i in 0..h {
@@ -295,13 +510,13 @@ pub fn input() -> &'static [u8] {
 }
 
 pub fn part1(s: &[u8]) -> usize {
-    let mut g = Grid::parse(s);
+    let mut m = Map::parse(s);
     for i in 1.. {
-        if !g.step_simd() {
+        if !m.step() {
             return i;
         }
     }
-    0
+    return usize::MAX;
 }
 
 pub fn part2(_: &[u8]) -> usize {

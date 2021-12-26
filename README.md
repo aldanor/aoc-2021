@@ -37,9 +37,9 @@ day 21    0.73 μs   284 μs
 day 22    102 μs    378 μs    
 day 23    28.2 μs   2587 μs   
 day 24    0.54 μs   0.55 μs   
-day 25    4038 μs   0.00 μs   
+day 25    1079 μs   0.00 μs   
 ------------------------------
-total time = 17309 μs
+total time = 14350 μs
 ```
 
 Quick notes on solutions to some of the problems that were less trivial (the problems that
