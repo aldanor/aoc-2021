@@ -26,7 +26,7 @@ pub fn input() -> &'static [u8] {
     include_bytes!("input.txt")
 }
 
-pub fn part1(mut s: &[u8]) -> T {
+pub fn part1(s: &[u8]) -> T {
     let ((_xmin, _xmax), (ymin, _ymax)) = parse(s);
     (ymin * (ymin + 1)) / 2
 }
@@ -49,7 +49,7 @@ fn v_range(min: T, max: T, n: T, lb: T) -> Range<T> {
     vmin..vmax
 }
 
-pub fn part2(mut s: &[u8]) -> usize {
+pub fn part2(s: &[u8]) -> usize {
     let ((xmin, xmax), (ymin, ymax)) = parse(s);
 
     // range of vx where eventually vx = 0 and we hit the box on x coordinate

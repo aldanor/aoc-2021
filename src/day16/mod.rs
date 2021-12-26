@@ -34,7 +34,7 @@ fn decode_bin<const N: usize>(s: &mut &[u8]) -> usize {
     v as usize
 }
 
-fn parse_hex2bin(mut s: &[u8]) -> BitVec {
+fn parse_hex2bin(s: &[u8]) -> BitVec {
     let mut v = BitVec::new();
     unsafe { v.set_len(s.len() * 4) };
     let mut ptr = v.as_mut_ptr().cast::<[u8; 4]>();
@@ -130,11 +130,11 @@ pub fn input() -> &'static [u8] {
     include_bytes!("input.txt")
 }
 
-pub fn part1(mut s: &[u8]) -> usize {
+pub fn part1(s: &[u8]) -> usize {
     sum_versions(&mut parse_hex2bin(s).as_slice())
 }
 
-pub fn part2(mut s: &[u8]) -> usize {
+pub fn part2(s: &[u8]) -> usize {
     eval_packet(&mut parse_hex2bin(s).as_slice())
 }
 

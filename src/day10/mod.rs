@@ -16,7 +16,7 @@ const fn map() -> [u8; 256] {
 }
 
 #[inline]
-fn build_stack<'a>(mut s: &[u8], stack: &'a mut [u8]) -> (u8, &'a [u8]) {
+fn build_stack<'a>(s: &[u8], stack: &'a mut [u8]) -> (u8, &'a [u8]) {
     const MAP: [u8; 256] = map();
     let mut stack = UnsafeStack::new(stack);
     for &c in s {

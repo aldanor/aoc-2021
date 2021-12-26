@@ -12,7 +12,7 @@ pub fn input() -> &'static [u8] {
     include_bytes!("input.txt")
 }
 
-pub fn part1(mut s: &[u8]) -> usize {
+pub fn part1(s: &[u8]) -> usize {
     const fn deterministic_rolls<const R: usize>() -> [[u16; 16]; R] {
         let mut table = [[0; 16]; R];
         let mut i = 0;
@@ -61,7 +61,7 @@ pub fn part1(mut s: &[u8]) -> usize {
     }
 }
 
-pub fn part2(mut s: &[u8]) -> u64 {
+pub fn part2(s: &[u8]) -> u64 {
     const ROLLS: [(usize, u64); 7] = [(3, 1), (4, 3), (5, 6), (6, 7), (7, 6), (8, 3), (9, 1)];
     let p = parse(s);
     // positions/players are rotating, but scores only increase (at least by 1), so we can sweep

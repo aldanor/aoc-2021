@@ -1,11 +1,7 @@
-use std::cmp::Ordering;
 use std::collections::hash_map::Entry;
-use std::collections::{BinaryHeap, HashSet};
 use std::fmt::{self, Debug, Formatter};
-use std::iter;
-use std::ops::Deref;
 
-use ahash::{AHashMap, AHashSet};
+use ahash::AHashMap;
 
 use crate::utils::*;
 
@@ -16,9 +12,7 @@ const N_PODS: usize = 4;
 type Cost = i32;
 const COSTS: [Cost; 4] = [1, 10, 100, 1000];
 
-const N_HALLWAYS: usize = 7;
 const N_BURROWS: usize = 4;
-const MAX_DEPTH: usize = 4;
 
 const HALLWAY_COORDS: [u8; 8] = [NIL, 0, 1, 3, 5, 7, 9, 10];
 const HALLWAY_COORDS_REV: [u8; 11] = [1, 2, NIL, 3, NIL, 4, NIL, 5, NIL, 6, 7];
@@ -64,6 +58,7 @@ impl Location {
         ((self.0 & 0x0c) >> 2, self.0 & 0x03)
     }
 
+    #[allow(unused)]
     pub const fn value(self) -> u8 {
         self.0
     }
@@ -130,6 +125,7 @@ impl Hallway {
         Self(0)
     }
 
+    #[allow(unused)]
     pub const fn value(self) -> u8 {
         self.0
     }
@@ -172,7 +168,7 @@ impl Hallway {
     }
 
     pub const fn toggle(mut self, hallway: u8) -> Self {
-        self.0 ^= (1 << (8 - hallway));
+        self.0 ^= 1 << (8 - hallway);
         self
     }
 
@@ -365,13 +361,7 @@ impl<const D: usize> GameState<D> {
             })
     }
 
-    pub fn any_burrow_placeable(&self) -> bool {
-        (0..N_PODS).any(|i| self.burrows[i] == D as u8 - self.n_remaining[i])
-    }
-
     pub fn iter_moves(&self, min_cost: Cost, mut callback: impl FnMut(Self)) {
-        let any_burrow_placeable = self.any_burrow_placeable();
-
         // first check if anyone can move home immediately
         for pod in 0..N_PODS {
             let n_remaining = self.n_remaining[pod];
@@ -520,7 +510,7 @@ impl<const D: usize> Debug for GameState<D> {
             }
             writeln!(f)?;
         }
-        writeln!(f);
+        writeln!(f)?;
         writeln!(f, "n_remaining = {:?}", self.n_remaining)?;
         writeln!(f, "    burrows = {:?}", self.burrows)?;
         writeln!(f, "    hallway = {:?}", self.hallway)?;
@@ -537,9 +527,7 @@ fn solve<const D: usize, const V: bool>(initial_state: GameState<D>) -> Cost {
     let mut visited = AHashMap::<_, Cost>::with_capacity((1 << 18) * V as usize);
 
     let mut min_extra_cost = Cost::MAX;
-    let mut n_states = 0;
     while let Some(state) = queue.pop() {
-        n_states += 1;
         if state.min_cost >= min_extra_cost {
             continue;
         } else if state.is_done() {
@@ -571,7 +559,9 @@ fn solve<const D: usize, const V: bool>(initial_state: GameState<D>) -> Cost {
     initial_cost + min_extra_cost
 }
 
-fn check_correctness() -> bool {
+#[test]
+#[cfg(not(debug_assertions))] // release mode only, otherwise it will take too long
+fn test_correctness() {
     let mut s = include_bytes!("tests.txt").as_ref();
     let mut inputs = vec![];
     while s.len() > 1 {
@@ -619,7 +609,7 @@ fn check_correctness() -> bool {
     } else {
         println!("All {} tests have passed.", inputs.len());
     }
-    n_fail == 0
+    assert_eq!(n_fail, 0);
 }
 
 pub fn input() -> &'static [u8] {
@@ -636,7 +626,7 @@ pub fn part1(s: &[u8]) -> Cost {
 }
 
 fn solve_part2(mut s: &[u8]) -> Cost {
-    let mut v = s;
+    let v = s;
     for _ in 0..3 {
         s = s.skip_past(b'\n', 1);
     }

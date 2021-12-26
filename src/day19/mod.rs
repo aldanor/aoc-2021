@@ -1,6 +1,5 @@
 use std::collections::HashSet;
 use std::fmt::{self, Debug};
-use std::mem;
 
 use arrayvec::ArrayVec;
 
@@ -119,7 +118,7 @@ fn find_polyhedron(ix: &ArrayDist, n: usize) -> Option<ArrayVec<usize, B>> {
         v[d.i as usize] |= 1 << d.j;
         v[d.j as usize] |= 1 << d.i;
     }
-    let mut vertices = 0_u32;
+    let mut vertices;
     while {
         let mut changed = false;
         // kill rows/columns with less than 12 edges (including self)
@@ -198,7 +197,6 @@ impl Mapping {
 
 #[derive(Clone, Debug)]
 struct Scanner {
-    id: u8,
     beacons: ArrayVec<Point, B>,
     pairwise_distances: Vec<Distance>,
     distance_matrix: Vec<i32>,
@@ -208,7 +206,7 @@ impl Scanner {
     fn parse(s: &mut &[u8]) -> Self {
         // note: fill() is not being called here
         *s = s.advance(12);
-        let id = parse_int_fast::<_, 1, 2>(s);
+        let _id = parse_int_fast::<u8, 1, 2>(s);
         *s = s.advance(4);
         let mut beacons = ArrayVec::new();
         while !s.is_empty() && s.get_first() != b'\n' {
@@ -220,7 +218,7 @@ impl Scanner {
         *s = s.advance(1);
         let pairwise_distances = Vec::with_capacity(B * B);
         let distance_matrix = Vec::with_capacity(B * B);
-        Self { id, beacons, pairwise_distances, distance_matrix }
+        Self { beacons, pairwise_distances, distance_matrix }
     }
 
     pub fn parse_multiple(mut s: &[u8]) -> ArrayVec<Self, S> {
@@ -336,7 +334,7 @@ impl Scanner {
         let mut dst = AXES.map(|_| ArrayVec::<T, B>::new());
 
         // first vertex in local coordinates for src/dst
-        let mut first = [SRC, DST].map(|k| scanners[k].beacons[v[k][0]]);
+        let first = [SRC, DST].map(|k| scanners[k].beacons[v[k][0]]);
 
         'outer: for i in 1..n {
             for axis in AXES {
@@ -374,7 +372,7 @@ impl Scanner {
                             mapping.axes = [x, y, z];
                             mapping.is_neg = [xneg, yneg, zneg];
                             let (v0_src, v0_dst) = (first[SRC], first[DST]);
-                            let mut v0_dst_no_offset = mapping.dst_to_src(v0_dst);
+                            let v0_dst_no_offset = mapping.dst_to_src(v0_dst);
                             mapping.offset = AXES.map(|i| v0_src[i] - v0_dst_no_offset[i]);
                             debug_assert!((0..n)
                                 .all(|i| mapping.dst_to_src(scanners[DST].beacons[v[DST][i]])
@@ -407,7 +405,7 @@ fn reconstruct_scanner_map(scanners: &ArrayVec<Scanner, S>) -> ArrayVec<Mapping,
             if j != i && done & (1 << j) == 0 {
                 if let Some(vertices) = scanners[i].check_distance_overlaps(&scanners[j]) {
                     if let Some(dst_mapping) = scanners[i].infer_mapping(&scanners[j], &vertices) {
-                        done |= (1 << j);
+                        done |= 1 << j;
                         queue.push((j, src_mapping.combine(&dst_mapping)));
                     }
                 }
@@ -422,7 +420,7 @@ pub fn input() -> &'static [u8] {
     include_bytes!("input.txt")
 }
 
-pub fn part1(mut s: &[u8]) -> usize {
+pub fn part1(s: &[u8]) -> usize {
     let scanners = Scanner::parse_multiple(s);
     let mappings = reconstruct_scanner_map(&scanners);
     let mut set = HashSet::with_capacity(B * S);
@@ -434,7 +432,7 @@ pub fn part1(mut s: &[u8]) -> usize {
     set.len()
 }
 
-pub fn part2(mut s: &[u8]) -> usize {
+pub fn part2(s: &[u8]) -> usize {
     let scanners = Scanner::parse_multiple(s);
     let mappings = reconstruct_scanner_map(&scanners);
     let mut max_dist = 0;

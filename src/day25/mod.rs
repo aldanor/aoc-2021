@@ -1,5 +1,4 @@
 use std::hash::Hasher;
-use std::ptr;
 
 use crate::utils::*;
 
@@ -46,6 +45,7 @@ const fn build_lookup_tables() -> [[u8; 64]; 2] {
 
 type Cells = ArrayVec<u8, K>;
 
+#[allow(unused)]
 fn fill_ghost_vertical(c: &mut Cells, w: usize, h: usize) {
     let mut row_offset = w + 2;
     for _ in 0..h {
@@ -101,6 +101,7 @@ impl Grid {
         Self { cells: g, width: w, height: h }
     }
 
+    #[allow(unused)]
     pub fn print(&self) {
         for i in 0..self.height {
             for j in 0..self.width {
@@ -115,6 +116,7 @@ impl Grid {
         }
     }
 
+    #[allow(unused)]
     pub fn step_naive(&mut self) -> bool {
         // obviously super slow; used to verify correctness
         let (w, h) = (self.width, self.height);
@@ -262,12 +264,13 @@ impl Grid {
         changed
     }
 
+    #[allow(unused)]
     pub fn hash(&self) -> u64 {
         // used for debugging, to check correctness
         use ahash::AHasher;
         let (w, h) = (self.width, self.height);
-        let mut v = Vec::with_capacity((w * h)); // exclude ghost cells
-        v.resize((w * h), 0);
+        let mut v = Vec::with_capacity(w * h); // exclude ghost cells
+        v.resize(w * h, 0);
         for i in 0..h {
             v[i * w..][..w].copy_from_slice(&self.cells[(i + 1) * (w + 2) + 1..][..w]);
         }

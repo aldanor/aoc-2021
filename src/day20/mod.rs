@@ -44,6 +44,7 @@ impl Board {
         Self { bits: [bits, [bitmap[0]; W * W]], width, offset, steps: 0 }
     }
 
+    #[allow(unused)]
     pub fn print(&self) {
         let bits = &self.bits[self.steps & 1];
         println!();
@@ -98,6 +99,7 @@ const fn range<const N: usize>() -> [usize; N] {
     out
 }
 
+#[allow(unused)]
 const fn input_indices() -> Simd<usize, 64> {
     // note: all indices are relative to the top left corner of the leftmost cell.
     // the top-left cell ('high bit') is ignored as it will be handled separately
@@ -120,6 +122,7 @@ const fn input_indices() -> Simd<usize, 64> {
     Simd::from_array(idx)
 }
 
+#[allow(unused)]
 const fn input_shifts() -> Simd<u8, 64> {
     let mut shifts = [0; 64];
     let mut i = 0;
@@ -130,8 +133,10 @@ const fn input_shifts() -> Simd<u8, 64> {
     Simd::from_array(shifts)
 }
 
+#[allow(unused)]
 #[inline]
 unsafe fn step_x8(src: *const u8, dst: *mut u8, bitmap: *const u8) -> usize {
+    // TODO: this is an unfinished sketch only, doesn't fully work yet
     // src pointer must point to the top left corner here
     let mut v = u8x64::gather_select_unchecked(
         slice::from_raw_parts(src, 0),

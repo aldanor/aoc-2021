@@ -24,6 +24,7 @@ enum Node {
 }
 
 impl Node {
+    #[allow(unused)]
     pub fn fold<T>(&self, literal: impl Copy + Fn(u8) -> T, pair: impl Copy + Fn(T, T) -> T) -> T {
         match self {
             Self::Literal(v) => literal(*v),
@@ -60,6 +61,7 @@ struct Number {
 }
 
 impl Number {
+    #[allow(unused)]
     pub fn new(values: &[u8], depths: &[u8]) -> Self {
         let length = values.len();
         assert!(length <= N);
@@ -359,7 +361,7 @@ pub fn part1(mut s: &[u8]) -> usize {
     let mut num = Number::default();
     while s.len() > 1 {
         let k = s.memchr(b'\n');
-        let mut other = Number::parse(&s[..k]);
+        let other = Number::parse(&s[..k]);
         if num.len() == 0 {
             num = other;
         } else {

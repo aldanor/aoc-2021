@@ -40,7 +40,7 @@ pub fn input() -> &'static [u8] {
     include_bytes!("input.txt")
 }
 
-pub fn part1(mut s: &[u8]) -> C {
+pub fn part1(s: &[u8]) -> C {
     /*
     Cost function:
 
@@ -53,7 +53,7 @@ pub fn part1(mut s: &[u8]) -> C {
     cost1(&x, m)
 }
 
-pub fn part2(mut s: &[u8]) -> C {
+pub fn part2(s: &[u8]) -> C {
     /*
     Cost function:
 
@@ -76,7 +76,7 @@ pub fn part2(mut s: &[u8]) -> C {
         mean(X) - m + mean(sgn(X - m)) / 2 = 0
         => m \in [mean(X) - 1/2; mean(X) + 1/2]
      */
-    let mut x = parse_input(s);
+    let x = parse_input(s);
     let m = mean_floor(&x);
 
     // a bit more ugly, but lets us iterate over the array once only

@@ -20,7 +20,7 @@ fn parse_grid(mut s: &[u8]) -> Grid {
     grid
 }
 
-fn evolve_dfs(mut grid: Grid) -> impl Iterator<Item = usize> {
+fn evolve_dfs(grid: Grid) -> impl Iterator<Item = usize> {
     type FlatGrid = [Cell; W * W];
     let mut grid: FlatGrid = unsafe { mem::transmute(grid) };
 
@@ -70,11 +70,11 @@ pub fn input() -> &'static [u8] {
     include_bytes!("input.txt")
 }
 
-pub fn part1(mut s: &[u8]) -> usize {
+pub fn part1(s: &[u8]) -> usize {
     evolve_dfs(parse_grid(s)).take(100).sum()
 }
 
-pub fn part2(mut s: &[u8]) -> usize {
+pub fn part2(s: &[u8]) -> usize {
     1 + evolve_dfs(parse_grid(s)).take_while(|n| *n != N * N).count()
 }
 
