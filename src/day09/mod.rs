@@ -15,32 +15,37 @@ pub fn input() -> &'static [u8] {
 
 pub fn part1(mut s: &[u8]) -> usize {
     type T = i8;
-    type S = core_simd::Simd<T, 64>;
+    const LANES: usize = 16; // width of SIMD vector
+    const K: usize = (N + LANES - 1) / LANES; // number of iterations for each line
+    type S = core_simd::Simd<T, LANES>;
 
-    let mut prev = [S::splat(T::MAX); 2];
-    let mut prev_min3 = [S::splat(T::MAX); 2];
+    let mut prev = [S::splat(T::MAX); K];
+    let mut prev_min3 = [S::splat(T::MAX); K];
     let mut out = 0;
 
     let zero = S::splat(0);
     let threshold = S::splat((b'0' - 1) as _);
 
-    for i in 1..=(N + 2) {
-        let mut arr = [T::MAX; 128];
+    for i in 0..(N + 1) {
+        let mut line = [T::MAX; K * LANES + 2]; // line with 'ghost cells' (starts with index 1)
 
-        if i <= N {
-            unsafe { std::ptr::copy_nonoverlapping(s.as_ptr(), arr.as_mut_ptr().add(1).cast(), N) };
+        if i < N {
+            // copy the line directly into the buffer without parsing
+            unsafe {
+                std::ptr::copy_nonoverlapping(s.as_ptr(), line.as_mut_ptr().add(1).cast(), N)
+            };
             s = s.advance(N + 1);
         }
 
-        for j in 0..2 {
-            let left = S::from_array(unsafe { *arr.as_ptr().add(0 + 64 * j).cast() });
-            let this = S::from_array(unsafe { *arr.as_ptr().add(1 + 64 * j).cast() });
-            let right = S::from_array(unsafe { *arr.as_ptr().add(2 + 64 * j).cast() });
+        for j in 0..K {
+            let left = S::from_array(unsafe { *line.as_ptr().add(j * LANES + 0).cast() });
+            let this = S::from_array(unsafe { *line.as_ptr().add(j * LANES + 1).cast() });
+            let right = S::from_array(unsafe { *line.as_ptr().add(j * LANES + 2).cast() });
 
             let this_min3 = lanes_min!(left, right);
             let this_min3 = lanes_min!(this_min3, prev[j]);
 
-            if i >= 2 {
+            if i != 0 {
                 let min_cross = lanes_min!(this, prev_min3[j]);
                 let value = prev[j] - threshold;
                 out += prev[j].lanes_lt(min_cross).select(value, zero).horizontal_sum() as usize;
